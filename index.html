@@ -1,0 +1,2667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Audio Visualizer Pro</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(45deg, #0f0f23, #1a1a2e, #16213e);
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            transition: background 0.5s ease;
+        }
+
+        body.dark {
+            background: #000000;
+        }
+
+        body.stars {
+        background: #000;
+        background-image: 
+            /* Bright stars */
+            radial-gradient(2px 2px at 10% 20%, rgba(255,255,255,0.9), transparent),
+            radial-gradient(3px 3px at 70% 30%, rgba(255,255,255,0.9), transparent),
+            radial-gradient(2px 2px at 85% 60%, rgba(255,255,255,0.8), transparent),
+
+            /* Medium stars */
+            radial-gradient(2px 2px at 25% 40%, rgba(255,255,255,0.6), transparent),
+            radial-gradient(3px 3px at 15% 85%, rgba(255,255,255,0.5), transparent),
+            radial-gradient(2px 2px at 60% 75%, rgba(255,255,255,0.5), transparent),
+
+            /* Dim stars */
+            radial-gradient(2px 2px at 5% 95%, rgba(200,200,255,0.3), transparent),
+            radial-gradient(2px 2px at 95% 15%, rgba(255,255,200,0.25), transparent),
+            radial-gradient(2px 2px at 55% 45%, rgba(220,220,220,0.2), transparent);
+        
+        background-repeat: repeat;
+        background-size: 300px 300px;
+
+        /* Twinkling effect */
+        animation: twinkle 1s infinite alternate ease-in-out;
+        }
+
+        @keyframes twinkle {
+        0%   { opacity: 0.8; }
+        50%  { opacity: 1; }
+        100% { opacity: 0.6; }
+        }
+
+        body.matrix {
+        background: 
+            /* vertical streaks overlay */
+            repeating-linear-gradient(
+            180deg,rgba(0, 255, 0, 0.05) 0px, rgba(0, 255, 0, 0.05) 2px, transparent 2px, transparent 40px),
+            /* animated glowing gradient */
+            linear-gradient(135deg, #0f1419 0%, #0a0f0a 25%, #001100 50%, #002200 75%,#0d1f0d 100%);
+
+        background-size: 100% 200%, 200% 200%;
+        background-attachment: fixed;
+        animation: matrixRain 20s linear infinite, matrixGlow 15s ease-in-out infinite alternate;
+        }
+
+        @keyframes matrixGlow {
+        0%   { background-position: 0% 50%, 0% 50%; }
+        50%  { background-position: 100% 50%, 100% 50%; }
+        100% { background-position: 0% 50%, 0% 50%; }
+        }
+
+        @keyframes matrixRain {
+        0%   { background-position: 0 0, 0 50%; }
+        100% { background-position: 0 1000px, 0 50%; }
+        }
+
+        body.cosmic {
+        background: #000; /* space black */
+
+        /* stars */
+        background-image: 
+            radial-gradient(1px 1px at 10px 20px, #fff, transparent),
+            radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.8), transparent),
+            radial-gradient(1px 1px at 90px 40px, rgba(255,255,255,0.6), transparent),
+            radial-gradient(1px 2px at 130px 80px, rgba(255,255,255,0.5), transparent),
+            radial-gradient(2px 1px at 160px 30px, rgba(255,255,255,0.7), transparent),
+
+            /* colorful nebula blobs */
+            radial-gradient(circle at 60px 200px, rgba(18, 4, 88, 0.6), transparent 60%),
+            radial-gradient(circle at 250px 50px, rgba(255, 107, 160, 0.5), transparent 60%),
+            radial-gradient(circle at 180px 150px, rgba(78, 205, 196, 0.4), transparent 70%),
+            radial-gradient(circle at 300px 250px, rgba(180, 50, 255, 0.3), transparent 70%);
+
+        background-repeat: repeat;
+        background-size: 400px 400px;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        #webgl-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(10, 10, 30, 0.95);
+            backdrop-filter: blur(15px);
+            border-radius: 15px;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            min-width: 320px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        #controls:hover {
+            border-color: rgba(0, 255, 255, 0.6);
+            box-shadow: 0 12px 48px rgba(0, 255, 255, 0.3);
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group.hidden {
+            display: none;
+        }
+
+        label {
+            display: block;
+            color: #00ffff;
+            font-size: 11px;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+            cursor: help;
+        }
+
+        select, input, button {
+            background: rgba(15, 15, 35, 0.9);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 6px;
+            color: #00ffff;
+            padding: 8px 12px;
+            font-size: 11px;
+            width: 100%;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        select {
+            background-color: rgba(15, 15, 35, 0.95);
+        }
+
+        select option {
+            background-color: #0f0f23;
+            color: #00ffff;
+            padding: 5px;
+        }
+
+        select:hover, input:hover, button:hover {
+            border-color: rgba(0, 255, 255, 0.6);
+            background: rgba(20, 20, 40, 0.9);
+            transform: translateY(-1px);
+        }
+
+        button {
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        button.active {
+            background: rgba(0, 255, 255, 0.3);
+            border-color: rgba(0, 255, 255, 0.8);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+        }
+
+        #fullscreen-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 200;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            background: rgba(10, 10, 30, 0.9);
+            backdrop-filter: blur(10px);
+            color: #00ffff;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        #fullscreen-btn:hover {
+            border-color: rgba(0, 255, 255, 0.8);
+            background: rgba(0, 255, 255, 0.2);
+            transform: scale(1.1);
+        }
+
+        #status {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 100;
+            color: rgba(0, 255, 255, 0.8);
+            font-size: 11px;
+            background: rgba(10, 10, 30, 0.8);
+            padding: 12px 18px;
+            border-radius: 25px;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .glow {
+            filter: drop-shadow(0 0 15px rgba(0, 255, 255, 0.5));
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            height: 4px;
+            background: rgba(0, 255, 255, 0.2);
+            border-radius: 2px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: linear-gradient(45deg, #00ffff, #0080ff);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.6);
+            border: 1px solid rgba(0, 255, 255, 0.8);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: linear-gradient(45deg, #00ffff, #0080ff);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.6);
+            border: 1px solid rgba(0, 255, 255, 0.8);
+        }
+
+        .info {
+            position: absolute;
+            top: 20px;
+            right: 90px;
+            z-index: 100;
+            color: rgba(0, 255, 255, 0.6);
+            font-size: 10px;
+            text-align: right;
+            line-height: 1.4;
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+
+        .advanced-controls {
+            background: rgba(5, 5, 15, 0.8);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 10px;
+            border: 1px solid rgba(0, 255, 255, 0.2);
+        }
+
+        .control-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .control-row .control-group {
+            margin-bottom: 5px;
+        }
+
+        .control-row label {
+            font-size: 9px;
+            margin-bottom: 3px;
+        }
+
+        .control-row input {
+            padding: 4px 8px;
+            font-size: 10px;
+        }
+
+        .error-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 1000;
+            display: none;
+        }
+
+        .performance-indicator {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(10, 10, 30, 0.8);
+            padding: 8px 12px;
+            border-radius: 15px;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            font-size: 10px;
+            color: #00ffff;
+        }
+
+        /* Auto-hide controls in fullscreen */
+        body:-webkit-full-screen #controls,
+        body:-moz-full-screen #controls,
+        body:fullscreen #controls {
+            opacity: 0.3;
+            transition: opacity 0.3s ease;
+        }
+
+        body:-webkit-full-screen #controls:hover,
+        body:-moz-full-screen #controls:hover,
+        body:fullscreen #controls:hover {
+            opacity: 1;
+        }
+
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+            #controls {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+                width: auto;
+                padding: 15px;
+                max-height: 70vh;
+            }
+            
+            #fullscreen-btn {
+                top: 10px;
+                right: 10px;
+            }
+            
+            #status {
+                bottom: 10px;
+                left: 10px;
+                right: 10px;
+                text-align: center;
+            }
+
+            .control-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <canvas id="webgl-canvas"></canvas>
+    </div>
+    
+    <div class="error-message" id="error-message">
+        <h3>WebGL Error</h3>
+        <p id="error-text">An error occurred while initializing the visualizer.</p>
+        <button onclick="document.getElementById('error-message').style.display='none'">Close</button>
+    </div>
+    
+    <div class="info">
+        <div>Press F11 for fullscreen</div>
+        <div>Use 1-6 keys to switch modes</div>
+        <div>Space to start/stop audio</div>
+        <div>H to hide/show controls</div>
+    </div>
+
+    <div id="fullscreen-btn" title="Toggle Fullscreen">⛶</div>
+
+    <div class="performance-indicator">
+        <div>GPU: <span id="gpu-info">Detecting...</span></div>
+        <div>Quality: <span id="quality-level">High</span></div>
+    </div>
+
+    <div id="controls" class="glow">
+        <div class="control-group">
+            <label>🎵 Audio Source</label>
+            <button id="start-capture" class="pulse">🎤 Start Microphone</button>
+        </div>
+        
+        <div class="control-group">
+            <label>🎨 Visualizer Mode</label>
+            <select id="visualizer-mode">
+                <option value="fractal">🌀 Fractal Reactor</option>
+                <option value="neural">🧠 Neural Network</option>
+                <option value="kaleidoscope">💎 Kaleidoscope</option>
+                <option value="tunnel">🕳️ 3D Tunnel</option>
+                <option value="edm-lightshow">🎆 EDM Lightshow</option>
+                <option value="psychedelic">🌈 Psychedelic Fractal</option>
+                <option value="dmt">🔮 DMT Tunnel</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>🌈 Color Theme</label>
+            <select id="color-theme">
+                <option value="cyan">💎 Cyan Glow</option>
+                <option value="rainbow">🌈 Rainbow</option>
+                <option value="fire">🔥 Fire</option>
+                <option value="electric">⚡ Electric Blue</option>
+                <option value="neon">💖 Neon Pink</option>
+                <option value="matrix">💚 Matrix Green</option>
+                <option value="sunset">🌅 Sunset</option>
+                <option value="cosmic">🌌 Cosmic Purple</option>
+            </select>
+        </div>
+
+        <div class="control-group" id="sensitivity-group">
+            <label title="Controls how much the visualizer responds to audio input">🎛️ Sensitivity: <span id="sensitivity-value">2.0</span></label>
+            <input type="range" id="sensitivity" min="0.1" max="5" step="0.1" value="2">
+        </div>
+
+        <div class="control-group" id="speed-group">
+            <label title="Controls animation speed and movement rate">⚡ Speed: <span id="speed-value">1.5</span></label>
+            <input type="range" id="speed" min="0.1" max="4" step="0.1" value="1.5">
+        </div>
+
+        <div class="control-group" id="intensity-group">
+            <label title="Controls brightness and overall energy of the effects">🔥 Intensity: <span id="intensity-value">2.0</span></label>
+            <input type="range" id="intensity" min="0.1" max="5" step="0.1" value="2">
+        </div>
+
+        <div class="advanced-controls">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                <label>⚙️ Advanced Controls</label>
+                <button id="reset-controls" style="width: auto; padding: 4px 12px; font-size: 10px;">🔄 Reset</button>
+            </div>
+            <div class="control-row">
+                <div class="control-group" id="zoom-group">
+                    <label title="Controls how zoomed in or out the visual effects appear">🔍 Zoom: <span id="zoom-value">1.0</span></label>
+                    <input type="range" id="zoom" min="0.1" max="5" step="0.1" value="1">
+                </div>
+                <div class="control-group" id="contrast-group">
+                    <label title="Controls the difference between light and dark areas">🌗 Contrast: <span id="contrast-value">1.2</span></label>
+                    <input type="range" id="contrast" min="0.1" max="3" step="0.1" value="1.2">
+                </div>
+            </div>
+            <div class="control-row">
+                <div class="control-group" id="orbsize-group">
+                    <label title="Controls the size of orbital movements and particle systems">⭕ Orbit Size: <span id="orbsize-value">1.0</span></label>
+                    <input type="range" id="orbsize" min="0.1" max="3" step="0.1" value="1">
+                </div>
+                <div class="control-group" id="radius-group">
+                    <label title="Controls the overall scale and spread of visual elements">📏 Scale: <span id="radius-value">1.0</span></label>
+                    <input type="range" id="radius" min="0.1" max="3" step="0.1" value="1">
+                </div>
+            </div>
+            <div class="control-row">
+                <div class="control-group" id="colorshift-group">
+                    <label title="Controls how fast colors cycle and change over time">🎨 Color Shift: <span id="colorshift-value">1.5</span></label>
+                    <input type="range" id="colorshift" min="0.1" max="5" step="0.1" value="1.5">
+                </div>
+                <div class="control-group" id="center-group">
+                    <label title="Shifts the center point of the visualization horizontally">🎯 Center X: <span id="center-value">0.0</span></label>
+                    <input type="range" id="center" min="-2" max="2" step="0.1" value="0">
+                </div>
+            </div>
+            <div class="control-row">
+                <div class="control-group" id="sides-group">
+                    <label title="Controls symmetry - number of repeated segments in kaleidoscope effects">🔢 Symmetry: <span id="sides-value">6</span></label>
+                    <input type="range" id="sides" min="3" max="20" step="1" value="6">
+                </div>
+                <div class="control-group" id="rotation-group">
+                    <label title="Controls rotation speed of spinning elements">🌀 Rotation: <span id="rotation-value">0.8</span></label>
+                    <input type="range" id="rotation" min="0.1" max="5" step="0.1" value="0.8">
+                </div>
+            </div>
+            <div class="control-row">
+                <div class="control-group" id="warp-group">
+                    <label title="Controls distortion and warping effects on the visuals">🌊 Warp: <span id="warp-value">0.3</span></label>
+                    <input type="range" id="warp" min="0.0" max="2" step="0.1" value="0.3">
+                </div>
+                <div class="control-group" id="maxiter-group">
+                    <label title="Controls detail level - higher values give more complex fractals">🎭 Iterations: <span id="maxiter-value">50</span></label>
+                    <input type="range" id="maxiter" min="20" max="200" step="10" value="50">
+                </div>
+            </div>
+            <div class="control-row">
+                <div class="control-group" id="flow-group">
+                    <label title="Controls how smoothly elements flow and transition">💫 Flow Speed: <span id="flow-value">1.0</span></label>
+                    <input type="range" id="flow" min="0.1" max="3" step="0.1" value="1.0">
+                </div>
+                <div class="control-group" id="complexity-group">
+                    <label title="Controls how intricate and detailed the patterns become">🔬 Complexity: <span id="complexity-value">1.2</span></label>
+                    <input type="range" id="complexity" min="0.5" max="3" step="0.1" value="1.2">
+                </div>
+            </div>
+            <div class="control-row">
+                <div class="control-group" id="distortion-group">
+                    <label title="Controls waviness and bending effects on the entire visual">🌀 Distortion: <span id="distortion-value">0.5</span></label>
+                    <input type="range" id="distortion" min="0.0" max="2" step="0.1" value="0.5">
+                </div>
+                <div class="control-group" id="kaleidoscope-group">
+                    <label title="Controls strength of mirror and kaleidoscope effects">💎 Kaleidoscope: <span id="kaleidoscope-value">1.0</span></label>
+                    <input type="range" id="kaleidoscope" min="0.0" max="3" step="0.1" value="1.0">
+                </div>
+            </div>
+            <div class="control-row">
+                <div class="control-group" id="morphing-group">
+                    <label title="Controls how shapes transform and change over time">🔄 Morphing: <span id="morphing-value">0.8</span></label>
+                    <input type="range" id="morphing" min="0.0" max="2" step="0.1" value="0.8">
+                </div>
+                <div class="control-group" id="fractal-group">
+                    <label title="Controls depth and recursiveness of fractal patterns">🌿 Fractal Depth: <span id="fractal-value">1.0</span></label>
+                    <input type="range" id="fractal" min="0.5" max="3" step="0.1" value="1.0">
+                </div>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>🎭 Background</label>
+            <select id="background-mode">
+                <option value="gradient">🌌 Gradient</option>
+                <option value="dark">🌑 Dark</option>
+                <option value="stars">✨ Stars</option>
+                <option value="matrix">💚 Matrix</option>
+                <option value="cosmic">🪐 Cosmic</option>
+            </select>
+        </div>
+    </div>
+
+    <div id="status">
+        <div>🎵 Status: <span id="audio-status">Click Start Microphone</span></div>
+        <div>📊 FPS: <span id="fps-counter">0</span></div>
+        <div>🎨 Mode: <span id="current-mode">Fractal Reactor</span></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script>
+        class UltimateAudioVisualizer {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.audioContext = null;
+                this.analyser = null;
+                this.dataArray = null;
+                this.source = null;
+                this.currentVisualizer = null;
+                this.isCapturing = false;
+                this.animationId = null;
+                this.isWebGLSupported = true;
+                this.performanceLevel = 'high';
+                this.controlsVisible = true;
+                
+                this.settings = {
+                    sensitivity: 2,
+                    speed: 1.5,
+                    intensity: 2,
+                    colorTheme: 'cyan',
+                    backgroundMode: 'gradient',
+                    visualizerMode: 'fractal',
+                    zoom: 1,
+                    contrast: 1.2,
+                    orbsize: 1,
+                    radius: 1,
+                    colorshift: 1.5,
+                    center: 0,
+                    sides: 6,
+                    rotation: 0.8,
+                    warp: 0.3,
+                    maxiter: 50,
+                    flow: 1.0,
+                    complexity: 1.2,
+                    distortion: 0.5,
+                    kaleidoscope: 1.0,
+                    morphing: 0.8,
+                    fractal: 1.0
+                };
+
+                this.audioAnalysis = {
+                    bass: 0, mid: 0, treble: 0, peak: 0, average: 0, history: []
+                };
+
+                this.modeControls = {
+                    fractal: ['sensitivity', 'speed', 'intensity', 'zoom', 'contrast', 'orbsize', 'colorshift', 'center', 'rotation'],
+                    neural: ['sensitivity', 'speed', 'intensity', 'zoom', 'contrast', 'orbsize', 'colorshift', 'rotation'],
+                    kaleidoscope: ['sensitivity', 'speed', 'intensity', 'zoom', 'contrast', 'orbsize', 'colorshift', 'center', 'sides', 'rotation'],
+                    tunnel: ['sensitivity', 'speed', 'intensity', 'zoom', 'contrast', 'colorshift', 'center', 'rotation', 'orbsize', 'warp'],
+                    'edm-lightshow': ['sensitivity', 'speed', 'intensity', 'zoom', 'contrast', 'orbsize', 'radius', 'colorshift', 'center', 'rotation', 'warp', 'flow'],
+                    psychedelic: ['sensitivity', 'speed', 'intensity', 'zoom', 'contrast', 'colorshift', 'center', 'sides', 'rotation', 'warp', 'maxiter', 'distortion', 'kaleidoscope', 'morphing', 'fractal'],
+                    dmt: ['sensitivity', 'speed', 'intensity', 'zoom', 'contrast', 'colorshift', 'center', 'rotation', 'warp', 'flow', 'complexity']
+                };
+
+                this.modeDefaults = {
+                    fractal: {
+                        sensitivity: 2.2, speed: 1.0, intensity: 2.2, zoom: 0.4, contrast: 1.4,
+                        orbsize: 2.0, radius: 1.0, colorshift: 0.9, center: 0.0, sides: 16,
+                        rotation: 0.9, warp: 0.2, maxiter: 40, flow: 1.0, complexity: 2.0,
+                        distortion: 0.3, kaleidoscope: 0.8, morphing: 0.5, fractal: 0.8
+                    },
+                    neural: {
+                        sensitivity: 2.2, speed: 1.4, intensity: 2.4, zoom: 1.0, contrast: 1.6,
+                        orbsize: 0.8, radius: 1.0, colorshift: 1.4, center: 0.0, sides: 6,
+                        rotation: 0.5, warp: 0.1, maxiter: 30, complexity: 0.8,
+                        distortion: 0.1, morphing: 0.3, fractal: 0.5
+                    },
+                    kaleidoscope: {
+                        sensitivity: 2.5, speed: 1.8, intensity: 2.5, zoom: 1.1, contrast: 1.6,
+                        orbsize: 1.2, radius: 1.2, colorshift: 2.0, center: 0.0, sides: 8,
+                        rotation: 1.0, warp: 0.3, maxiter: 35, flow: 1.0, complexity: 1.2,
+                        distortion: 0.4, kaleidoscope: 1.2, morphing: 0.6, fractal: 1.0
+                    },
+                    tunnel: {
+                        sensitivity: 2.5, speed: 1.8, intensity: 2.0, zoom: 1.0, contrast: 1.4,
+                        orbsize: 1.2, radius: 1.0, colorshift: 1.8, center: 0.0, sides: 6,
+                        rotation: 0.6, warp: 0.4, maxiter: 25, flow: 1.0, complexity: 0.8,
+                        distortion: 0.2, kaleidoscope: 0.6, morphing: 0.4, fractal: 0.7
+                    },
+                    'edm-lightshow': {
+                        sensitivity: 2.5, speed: 1.5, intensity: 2.2, zoom: 1.0, contrast: 1.8,
+                        orbsize: 0.8, radius: 1.4, colorshift: 2.0, center: 0.0, sides: 8,
+                        rotation: 0.7, warp: 0.3, maxiter: 30, flow: 1.0, complexity: 1.0,
+                        distortion: 0.2, kaleidoscope: 0.8, morphing: 0.5, fractal: 0.8
+                    },
+                    psychedelic: {
+                        sensitivity: 3.0, speed: 1.2, intensity: 0.8, zoom: 1.2, contrast: 0.5,
+                        orbsize: 1.4, radius: 1.4, colorshift: 1.4, center: 0.0, sides: 9,
+                        rotation: 0.5, warp: 0.6, maxiter: 80, flow: 1.0, complexity: 1.2,
+                        distortion: 0.3, kaleidoscope: 2.3, morphing: 0.4, fractal: 2.8
+                    },
+                    dmt: {
+                        sensitivity: 3.2, speed: 1.0, intensity: 3.0, zoom: 1.3, contrast: 2.0,
+                        orbsize: 1.5, radius: 1.6, colorshift: 2.8, center: 0.0, sides: 8,
+                        rotation: 0.6, warp: 0.8, maxiter: 100, flow: 1.6, complexity: 1.8,
+                        distortion: 1.0, kaleidoscope: 1.8, morphing: 1.5, fractal: 2.0
+                    }
+                };
+
+                this.colorThemes = {
+                    cyan: { primary: 0x00ffff, secondary: 0x0080ff, accent: 0x00ff80 },
+                    rainbow: { primary: 0xff0080, secondary: 0x8000ff, accent: 0x00ff80 },
+                    fire: { primary: 0xff4000, secondary: 0xff8000, accent: 0xffff00 },
+                    electric: { primary: 0x0040ff, secondary: 0x4080ff, accent: 0x80c0ff },
+                    neon: { primary: 0xff0080, secondary: 0xff4080, accent: 0xff80c0 },
+                    matrix: { primary: 0x00ff41, secondary: 0x008f11, accent: 0x00ff88 },
+                    sunset: { primary: 0xff6b35, secondary: 0xff8c42, accent: 0xffd23f },
+                    cosmic: { primary: 0x9b59b6, secondary: 0x8e44ad, accent: 0x3498db }
+                };
+
+                this.fpsCounter = 0;
+                this.lastFpsTime = performance.now();
+
+                this.init();
+            }
+
+            showError(message) {
+                document.getElementById('error-text').textContent = message;
+                document.getElementById('error-message').style.display = 'block';
+                console.error('Visualizer Error:', message);
+            }
+
+            detectGPU() {
+                try {
+                    const canvas = document.createElement('canvas');
+                    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                    if (!gl) {
+                        this.performanceLevel = 'low';
+                        return 'WebGL Not Supported';
+                    }
+                    
+                    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                    const renderer = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : 'Unknown GPU';
+                    
+                    if (renderer.includes('Intel') || renderer.includes('Software')) {
+                        this.performanceLevel = 'medium';
+                    } else if (renderer.includes('NVIDIA') || renderer.includes('AMD') || renderer.includes('Radeon')) {
+                        this.performanceLevel = 'high';
+                    }
+                    
+                    document.getElementById('gpu-info').textContent = renderer.substring(0, 20) + '...';
+                    document.getElementById('quality-level').textContent = this.performanceLevel.charAt(0).toUpperCase() + this.performanceLevel.slice(1);
+                    
+                    return renderer;
+                } catch (e) {
+                    this.performanceLevel = 'low';
+                    return 'Unknown';
+                }
+            }
+
+            init() {
+                try {
+                    this.detectGPU();
+                    this.setupThreeJS();
+                    this.setupEventListeners();
+                    this.updateBackground();
+                    this.updateControlVisibility();
+                    this.animate();
+                    this.showWelcomeMessage();
+                } catch (error) {
+                    this.showError('Failed to initialize: ' + error.message);
+                }
+            }
+
+            showWelcomeMessage() {
+                setTimeout(() => {
+                    document.getElementById('audio-status').innerHTML = 
+                        '<span class="pulse">🎵 Ready! Click Start Microphone 🎤</span>';
+                }, 1000);
+            }
+
+            setupThreeJS() {
+                const canvas = document.getElementById('webgl-canvas');
+                
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                if (!gl) {
+                    this.showError('WebGL is not supported on this device. Please use a modern browser.');
+                    this.isWebGLSupported = false;
+                    return;
+                }
+
+                this.scene = new THREE.Scene();
+                
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.camera.position.set(0, 0, 8);
+
+                try {
+                    this.renderer = new THREE.WebGLRenderer({ 
+                        canvas: canvas,
+                        antialias: this.performanceLevel === 'high', 
+                        alpha: false,
+                        powerPreference: "high-performance",
+                        precision: "mediump"
+                    });
+                    
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                    this.renderer.setClearColor(0x000000, 1);
+                    
+                    const pixelRatio = this.performanceLevel === 'high' ? 
+                        Math.min(window.devicePixelRatio, 2) : 1;
+                    this.renderer.setPixelRatio(pixelRatio);
+                    
+                } catch (error) {
+                    this.showError('Failed to create WebGL renderer: ' + error.message);
+                    return;
+                }
+
+                this.applyModeDefaults('fractal');
+                this.switchVisualizer('fractal');
+
+                window.addEventListener('resize', () => this.onWindowResize());
+            }
+
+            updateControlVisibility() {
+                const currentMode = this.settings.visualizerMode;
+                const relevantControls = this.modeControls[currentMode] || [];
+                
+                const allControls = ['zoom', 'contrast', 'orbsize', 'radius', 'colorshift', 'center', 'sides', 'rotation', 'warp', 'maxiter', 'flow', 'complexity', 'distortion', 'kaleidoscope', 'morphing', 'fractal'];
+                allControls.forEach(control => {
+                    const group = document.getElementById(`${control}-group`);
+                    if (group) {
+                        group.classList.add('hidden');
+                    }
+                });
+                
+                relevantControls.forEach(control => {
+                    const group = document.getElementById(`${control}-group`);
+                    if (group) {
+                        group.classList.remove('hidden');
+                    }
+                });
+            }
+
+            applyModeDefaults(mode) {
+                const defaults = this.modeDefaults[mode];
+                if (!defaults) return;
+
+                Object.keys(defaults).forEach(key => {
+                    this.settings[key] = defaults[key];
+                });
+
+                Object.keys(defaults).forEach(key => {
+                    const control = document.getElementById(key);
+                    const valueSpan = document.getElementById(`${key}-value`);
+                    
+                    if (control && control.type === 'range') {
+                        control.value = defaults[key];
+                        if (valueSpan) {
+                            valueSpan.textContent = defaults[key];
+                        }
+                    }
+                });
+            }
+
+            setupEventListeners() {
+                document.getElementById('start-capture').addEventListener('click', () => {
+                    if (this.isCapturing) {
+                        this.stopAudioCapture();
+                    } else {
+                        this.startAudioCapture();
+                    }
+                });
+
+                document.getElementById('visualizer-mode').addEventListener('change', (e) => {
+                    const newMode = e.target.value;
+                    this.settings.visualizerMode = newMode;
+                    
+                    this.applyModeDefaults(newMode);
+                    this.updateControlVisibility();
+                    
+                    this.switchVisualizer(newMode);
+                    document.getElementById('current-mode').textContent = e.target.options[e.target.selectedIndex].text.split(' ').slice(1).join(' ');
+                });
+
+                document.getElementById('color-theme').addEventListener('change', (e) => {
+                    this.settings.colorTheme = e.target.value;
+                    if (this.currentVisualizer && this.currentVisualizer.updateColors) {
+                        this.currentVisualizer.updateColors(this.colorThemes[e.target.value]);
+                    }
+                });
+
+                const controls = ['sensitivity', 'speed', 'intensity', 'zoom', 'contrast', 'orbsize', 'radius', 'colorshift', 'center', 'sides', 'rotation', 'warp', 'maxiter', 'flow', 'complexity', 'distortion', 'kaleidoscope', 'morphing', 'fractal'];
+                controls.forEach(control => {
+                    const element = document.getElementById(control);
+                    if (element) {
+                        element.addEventListener('input', (e) => {
+                            this.settings[control] = parseFloat(e.target.value);
+                            const valueElement = document.getElementById(`${control}-value`);
+                            if (valueElement) {
+                                valueElement.textContent = e.target.value;
+                            }
+                        });
+                    }
+                });
+
+                document.getElementById('reset-controls').addEventListener('click', () => {
+                    this.applyModeDefaults(this.settings.visualizerMode);
+                });
+
+                document.getElementById('background-mode').addEventListener('change', (e) => {
+                    this.settings.backgroundMode = e.target.value;
+                    this.updateBackground();
+                });
+
+                document.getElementById('fullscreen-btn').addEventListener('click', () => {
+                    this.toggleFullscreen();
+                });
+
+                document.addEventListener('keydown', (e) => {
+                    switch(e.code) {
+                        case 'Space':
+                            e.preventDefault();
+                            if (this.isCapturing) {
+                                this.stopAudioCapture();
+                            } else {
+                                this.startAudioCapture();
+                            }
+                            break;
+                        case 'F11':
+                            e.preventDefault();
+                            this.toggleFullscreen();
+                            break;
+                        case 'KeyH':
+                            e.preventDefault();
+                            this.toggleControls();
+                            break;
+                        case 'Digit1':
+                        case 'Digit2':
+                        case 'Digit3':
+                        case 'Digit4':
+                        case 'Digit5':
+                        case 'Digit6':
+                        case 'Digit7':
+                            e.preventDefault();
+                            const modes = ['fractal', 'neural', 'kaleidoscope', 'tunnel', 'edm-lightshow', 'psychedelic', 'dmt'];
+                            const modeIndex = parseInt(e.code.slice(-1)) - 1;
+                            if (modes[modeIndex]) {
+                                const newMode = modes[modeIndex];
+                                document.getElementById('visualizer-mode').value = newMode;
+                                this.settings.visualizerMode = newMode;
+                                this.applyModeDefaults(newMode);
+                                this.updateControlVisibility();
+                                this.switchVisualizer(newMode);
+                                document.getElementById('current-mode').textContent = 
+                                    document.getElementById('visualizer-mode').options[modeIndex].text.split(' ').slice(1).join(' ');
+                            }
+                            break;
+                    }
+                });
+            }
+
+            toggleControls() {
+                const controls = document.getElementById('controls');
+                this.controlsVisible = !this.controlsVisible;
+                controls.style.display = this.controlsVisible ? 'block' : 'none';
+            }
+
+            async startAudioCapture() {
+                try {
+                    document.getElementById('audio-status').textContent = 'Requesting microphone access...';
+                    
+                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                        audio: {
+                            echoCancellation: false,
+                            noiseSuppression: false,
+                            autoGainControl: false,
+                            sampleRate: 44100
+                        } 
+                    });
+
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    this.analyser = this.audioContext.createAnalyser();
+                    this.analyser.fftSize = 4096;
+                    this.analyser.smoothingTimeConstant = 0.8;
+
+                    this.source = this.audioContext.createMediaStreamSource(stream);
+                    this.source.connect(this.analyser);
+
+                    this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+                    
+                    this.isCapturing = true;
+                    document.getElementById('audio-status').innerHTML = '🎵 <span class="pulse">Live! Play some music!</span>';
+                    document.getElementById('start-capture').textContent = '🛑 Stop Capture';
+                    document.getElementById('start-capture').classList.add('active');
+
+                } catch (error) {
+                    console.error('Error accessing microphone:', error);
+                    document.getElementById('audio-status').textContent = '❌ Microphone access denied';
+                }
+            }
+
+            stopAudioCapture() {
+                if (this.source) this.source.disconnect();
+                if (this.audioContext) this.audioContext.close();
+                
+                this.isCapturing = false;
+                document.getElementById('audio-status').textContent = 'Click Start Microphone to begin';
+                document.getElementById('start-capture').textContent = '🎤 Start Microphone';
+                document.getElementById('start-capture').classList.remove('active');
+            }
+
+            toggleFullscreen() {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(err => {
+                        console.log('Error attempting to enable fullscreen:', err);
+                    });
+                } else {
+                    document.exitFullscreen();
+                }
+            }
+
+            analyzeAudio(audioData) {
+                if (!audioData) return this.audioAnalysis;
+                
+                const bufferLength = audioData.length;
+                const bassEnd = Math.floor(bufferLength * 0.1);
+                const midEnd = Math.floor(bufferLength * 0.5);
+                
+                let bassSum = 0, midSum = 0, trebleSum = 0, peak = 0, average = 0;
+                
+                for (let i = 0; i < bufferLength; i++) {
+                    const value = audioData[i];
+                    average += value;
+                    peak = Math.max(peak, value);
+                    
+                    if (i < bassEnd) bassSum += value;
+                    else if (i < midEnd) midSum += value;
+                    else trebleSum += value;
+                }
+                
+                this.audioAnalysis.bass = (bassSum / bassEnd) / 255;
+                this.audioAnalysis.mid = (midSum / (midEnd - bassEnd)) / 255;
+                this.audioAnalysis.treble = (trebleSum / (bufferLength - midEnd)) / 255;
+                this.audioAnalysis.peak = peak / 255;
+                this.audioAnalysis.average = (average / bufferLength) / 255;
+                
+                this.audioAnalysis.history.push({
+                    bass: this.audioAnalysis.bass,
+                    mid: this.audioAnalysis.mid,
+                    treble: this.audioAnalysis.treble,
+                    time: performance.now()
+                });
+                
+                if (this.audioAnalysis.history.length > 30) {
+                    this.audioAnalysis.history.shift();
+                }
+                
+                return this.audioAnalysis;
+            }
+
+            switchVisualizer(mode) {
+                if (!this.isWebGLSupported) return;
+
+                if (this.currentVisualizer && this.currentVisualizer.dispose) {
+                    this.currentVisualizer.dispose();
+                }
+
+                // Clear scene more thoroughly
+                while(this.scene.children.length > 0) {
+                    const child = this.scene.children[0];
+                    this.scene.remove(child);
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(mat => mat.dispose());
+                        } else {
+                            child.material.dispose();
+                        }
+                    }
+                }
+                
+                // Clear fog
+                this.scene.fog = null;
+
+                const colors = this.colorThemes[this.settings.colorTheme];
+
+                try {
+                    switch(mode) {
+                        case 'fractal':
+                            this.currentVisualizer = new EnhancedFractalVisualizer(this.scene, colors, this.performanceLevel);
+                            this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                            this.camera.position.set(0, 0, 8);
+                            break;
+                        case 'neural':
+                            this.currentVisualizer = new EnhancedNeuralVisualizer(this.scene, colors, this.performanceLevel);
+                            this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                            this.camera.position.set(0, 0, 8);
+                            break;
+                        case 'kaleidoscope':
+                            this.currentVisualizer = new EnhancedKaleidoscopeVisualizer(this.scene, colors, this.performanceLevel);
+                            this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                            this.camera.position.set(0, 0, 8);
+                            break;
+                        case 'tunnel':
+                            this.currentVisualizer = new EnhancedTunnelVisualizer(this.scene, colors, this.performanceLevel);
+                            this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                            this.camera.position.set(0, 0, 8);
+                            break;
+                        case 'edm-lightshow':
+                            this.currentVisualizer = new EDMLightshowVisualizer(this.scene, colors, this.performanceLevel);
+                            this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                            this.camera.position.set(0, 0, 8);
+                            break;
+                        case 'psychedelic':
+                            this.currentVisualizer = new FullscreenPsychedelicVisualizer(this.scene, colors, this.performanceLevel);
+                            this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+                            this.camera.position.z = 1;
+                            break;
+                        case 'dmt':
+                            this.currentVisualizer = new FullscreenDMTVisualizer(this.scene, colors, this.performanceLevel);
+                            this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+                            this.camera.position.z = 1;
+                            break;
+                    }
+                } catch (error) {
+                    this.showError('Failed to create visualizer: ' + error.message);
+                    this.currentVisualizer = new EnhancedFractalVisualizer(this.scene, colors, 'low');
+                }
+            }
+
+            updateBackground() {
+                const body = document.body;
+                body.className = this.settings.backgroundMode;
+                
+                // Also update the renderer clear color based on background
+                if (this.renderer) {
+                    switch(this.settings.backgroundMode) {
+                        case 'dark':
+                            this.renderer.setClearColor(0x000000, 1);
+                            break;
+                        case 'matrix':
+                            this.renderer.setClearColor(0x001100, 1);
+                            break;
+                        case 'cosmic':
+                            this.renderer.setClearColor(0x120458, 1);
+                            break;
+                        case 'stars':
+                            this.renderer.setClearColor(0x000000, 1);
+                            break;
+                        default:
+                            this.renderer.setClearColor(0x0f0f23, 1);
+                            break;
+                    }
+                }
+            }
+
+            animate() {
+                if (!this.isWebGLSupported) return;
+
+                this.animationId = requestAnimationFrame(() => this.animate());
+
+                const frameStart = performance.now();
+
+                this.fpsCounter++;
+                if (frameStart - this.lastFpsTime >= 1000) {
+                    document.getElementById('fps-counter').textContent = this.fpsCounter;
+                    this.fpsCounter = 0;
+                    this.lastFpsTime = frameStart;
+                }
+
+                let audioData = null;
+                if (this.isCapturing && this.analyser) {
+                    this.analyser.getByteFrequencyData(this.dataArray);
+                    audioData = this.dataArray;
+                }
+
+                const analysis = this.analyzeAudio(audioData);
+
+                if (this.currentVisualizer && this.currentVisualizer.update) {
+                    this.currentVisualizer.update(audioData, this.settings, analysis);
+                }
+
+                this.renderer.render(this.scene, this.camera);
+            }
+
+            onWindowResize() {
+                if (!this.isWebGLSupported) return;
+
+                if (this.camera instanceof THREE.PerspectiveCamera) {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                }
+                
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                
+                if (this.currentVisualizer && this.currentVisualizer.plane && this.currentVisualizer.plane.material.uniforms) {
+                    const uniforms = this.currentVisualizer.plane.material.uniforms;
+                    if (uniforms.u_res) {
+                        uniforms.u_res.value.set(window.innerWidth, window.innerHeight);
+                    }
+                }
+            }
+        }
+
+        // Enhanced Fractal Visualizer
+        class EnhancedFractalVisualizer {
+            constructor(scene, colors, performance) {
+                this.scene = scene;
+                this.colors = colors;
+                this.performance = performance;
+                this.fractals = [];
+                this.time = 0;
+                this.createFractals();
+            }
+
+            createFractals() {
+                const count = this.performance === 'high' ? 8 : this.performance === 'medium' ? 6 : 4;
+                
+                for (let level = 0; level < count; level++) {
+                    const size = 2.5 - level * 0.3;
+                    const detail = this.performance === 'high' ? level + 1 : 1;
+                    const geometry = new THREE.IcosahedronGeometry(size, detail);
+                    
+                    const material = new THREE.MeshPhongMaterial({
+                        color: this.colors.primary,
+                        emissive: this.colors.primary,
+                        emissiveIntensity: 0.4,
+                        transparent: true,
+                        opacity: 0.8 - level * 0.1,
+                        wireframe: level % 2 === 1
+                    });
+
+                    const fractal = new THREE.Mesh(geometry, material);
+                    fractal.userData = { level: level, baseSize: size };
+                    this.fractals.push(fractal);
+                    this.scene.add(fractal);
+                }
+
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+                this.scene.add(ambientLight);
+
+                const pointLight = new THREE.PointLight(this.colors.accent, 3, 50);
+                pointLight.position.set(0, 0, 10);
+                this.scene.add(pointLight);
+                this.pointLight = pointLight;
+            }
+
+            update(audioData, settings, analysis) {
+                if (!audioData) {
+                    const time = Date.now() * 0.001;
+                    audioData = new Uint8Array(2048);
+                    for (let i = 0; i < audioData.length; i++) {
+                        audioData[i] = Math.sin(time + i * 0.02) * 60 + 120;
+                    }
+                }
+
+                this.time += 0.016 * settings.speed;
+
+                this.fractals.forEach((fractal, index) => {
+                    const level = fractal.userData.level;
+                    
+                    let amplitude;
+                    if (level < 2) amplitude = analysis.bass;
+                    else if (level < 4) amplitude = analysis.mid;
+                    else amplitude = analysis.treble;
+
+                    const scale = (1 + amplitude * (4 + level * 0.5) * settings.intensity) * settings.zoom;
+                    fractal.scale.setScalar(scale);
+                    
+                    const rotSpeed = settings.rotation * settings.speed;
+                    fractal.rotation.x += (0.02 + amplitude * 0.15) * rotSpeed;
+                    fractal.rotation.y += (0.025 + amplitude * 0.12) * rotSpeed;
+                    fractal.rotation.z += (0.015 + amplitude * 0.08) * rotSpeed;
+                    
+                    fractal.material.emissiveIntensity = (0.4 + amplitude * 4) * settings.contrast;
+                    
+                    const orbSize = settings.orbsize;
+                    fractal.position.x = Math.sin(this.time + level) * amplitude * 4 * orbSize + settings.center;
+                    fractal.position.y = Math.cos(this.time * 1.3 + level) * amplitude * 4 * orbSize;
+                    fractal.position.z = Math.sin(this.time * 0.7 + level) * amplitude * 3 * orbSize;
+                    
+                    const hue = (amplitude * settings.colorshift + analysis.peak * 0.5 + this.time * 0.1) % 1;
+                    fractal.material.color.setHSL(hue, 0.9, 0.6 + amplitude * 0.3);
+                    fractal.material.emissive.setHSL(hue, 1.0, 0.4 + amplitude * 0.4);
+                });
+            }
+
+            updateColors(colors) {
+                this.colors = colors;
+                this.fractals.forEach(fractal => {
+                    fractal.material.color.setHex(colors.primary);
+                    fractal.material.emissive.setHex(colors.primary);
+                });
+                if (this.pointLight) {
+                    this.pointLight.color.setHex(colors.accent);
+                }
+            }
+
+            dispose() {
+                this.fractals.forEach(fractal => {
+                    this.scene.remove(fractal);
+                    fractal.geometry.dispose();
+                    fractal.material.dispose();
+                });
+                this.fractals = [];
+            }
+        }
+
+        // Fixed Enhanced Neural Visualizer
+        class EnhancedNeuralVisualizer {
+            constructor(scene, colors, performance) {
+                this.scene = scene;
+                this.colors = colors;
+                this.nodes = [];
+                this.connections = [];
+                this.time = 0;
+                this.createNetwork();
+            }
+
+            createNetwork() {
+                // Optimized layer configuration for better visual appeal and performance
+                const layers = this.performance === 'high' ? [8, 12, 16, 12, 8] :
+                              this.performance === 'medium' ? [6, 10, 14, 10, 6] : [5, 8, 10, 8, 5];
+                const layerSpacing = 3.2;
+                let nodeId = 0;
+
+                // Create nodes with enhanced visual properties
+                layers.forEach((nodeCount, layerIndex) => {
+                    const startY = -(nodeCount - 1) * 0.6;
+                    const xPos = (layerIndex - (layers.length - 1) / 2) * layerSpacing;
+                    
+                    for (let i = 0; i < nodeCount; i++) {
+                        // Optimized geometry for 120+ FPS
+                        const geometry = new THREE.SphereGeometry(0.12, 8, 6);
+                        const material = new THREE.MeshBasicMaterial({
+                            color: this.colors.primary,
+                            transparent: true,
+                            opacity: 0.9
+                        });
+
+                        const node = new THREE.Mesh(geometry, material);
+                        node.position.set(xPos, startY + i * 1.2, 0);
+                        node.userData = {
+                            id: nodeId++,
+                            layer: layerIndex,
+                            activation: 0,
+                            baseSize: 0.12,
+                            basePosition: new THREE.Vector3(xPos, startY + i * 1.2, 0),
+                            pulseOffset: Math.random() * Math.PI * 2
+                        };
+                        
+                        this.nodes.push(node);
+                        this.scene.add(node);
+                    }
+                });
+
+                // Create comprehensive connections ensuring ALL layers connect properly
+                for (let l = 0; l < layers.length - 1; l++) {
+                    const currentLayer = this.nodes.filter(n => n.userData.layer === l);
+                    const nextLayer = this.nodes.filter(n => n.userData.layer === l + 1);
+                    
+                    // Ensure EVERY layer connects to the next - no gaps
+                    currentLayer.forEach((node1, i) => {
+                        nextLayer.forEach((node2, j) => {
+                            // Enhanced connection strategy - more connections for better visuals
+                            let shouldConnect = false;
+                            
+                            if (this.performance === 'high') {
+                                // High performance: Connect most nodes (80% of connections)
+                                shouldConnect = (i + j) % 5 !== 4; // Skip only every 5th connection
+                            } else if (this.performance === 'medium') {
+                                // Medium performance: Connect 60% of nodes
+                                shouldConnect = (i + j) % 3 !== 2; // Skip every 3rd connection
+                            } else {
+                                // Low performance: Connect 50% but ensure coverage
+                                shouldConnect = (i + j) % 2 === 0 || Math.abs(i - j) <= 1;
+                            }
+                            
+                            if (shouldConnect) {
+                                const geometry = new THREE.BufferGeometry();
+                                const positions = new Float32Array([
+                                    node1.position.x, node1.position.y, node1.position.z,
+                                    node2.position.x, node2.position.y, node2.position.z
+                                ]);
+                                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                                
+                                const material = new THREE.LineBasicMaterial({
+                                    color: this.colors.secondary,
+                                    transparent: true,
+                                    opacity: 0.4, // Increased base opacity for visibility
+                                    linewidth: 2
+                                });
+                                
+                                const line = new THREE.Line(geometry, material);
+                                line.userData = {
+                                    node1,
+                                    node2,
+                                    strength: 0.3 + Math.random() * 0.7,
+                                    positions: positions,
+                                    layerConnection: l,
+                                    baseOpacity: 0.4
+                                };
+                                this.connections.push(line);
+                                this.scene.add(line);
+                            }
+                        });
+                    });
+                }
+
+                // Add enhanced long-range connections for all performance levels
+                for (let l = 0; l < layers.length - 2; l++) {
+                    const currentLayer = this.nodes.filter(n => n.userData.layer === l);
+                    const targetLayer = this.nodes.filter(n => n.userData.layer === l + 2);
+                    
+                    // Add strategic long-range connections
+                    currentLayer.forEach((node1, i) => {
+                        const connectionChance = this.performance === 'high' ? 0.4 :
+                                               this.performance === 'medium' ? 0.3 : 0.2;
+                        
+                        if (Math.random() < connectionChance && i < targetLayer.length) {
+                            const node2 = targetLayer[Math.min(i, targetLayer.length - 1)];
+                            const geometry = new THREE.BufferGeometry();
+                            const positions = new Float32Array([
+                                node1.position.x, node1.position.y, node1.position.z,
+                                node2.position.x, node2.position.y, node2.position.z
+                            ]);
+                            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                            
+                            const material = new THREE.LineBasicMaterial({
+                                color: this.colors.accent,
+                                transparent: true,
+                                opacity: 0.25
+                            });
+                            
+                            const line = new THREE.Line(geometry, material);
+                            line.userData = {
+                                node1,
+                                node2,
+                                strength: Math.random() * 0.8,
+                                positions: positions,
+                                layerConnection: -1, // Mark as long-range
+                                baseOpacity: 0.25
+                            };
+                            this.connections.push(line);
+                            this.scene.add(line);
+                        }
+                    });
+                }
+
+                // Enhanced lighting for better node visibility
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.8);
+                this.scene.add(ambientLight);
+                
+                // Add point light for better depth perception
+                const pointLight = new THREE.PointLight(this.colors.primary, 1.5, 50);
+                pointLight.position.set(0, 0, 15);
+                this.scene.add(pointLight);
+                this.pointLight = pointLight;
+            }
+
+            update(audioData, settings, analysis) {
+                if (!audioData) {
+                    const time = Date.now() * 0.001;
+                    audioData = new Uint8Array(1024); // Increased for better frequency resolution
+                    for (let i = 0; i < audioData.length; i++) {
+                        audioData[i] = Math.sin(time + i * 0.02) * 80 + 140;
+                    }
+                }
+
+                this.time += 0.016 * settings.speed;
+
+                // Enhanced node updates with better audio mapping
+                const nodeCount = this.nodes.length;
+                const audioLength = audioData?.length || 1024;
+                
+                for (let i = 0; i < nodeCount; i++) {
+                    const node = this.nodes[i];
+                    const layer = node.userData.layer;
+                    
+                    // Map different layers to different frequency ranges
+                    let freqIndex;
+                    if (layer === 0) {
+                        // Input layer - use bass frequencies
+                        freqIndex = Math.floor((i / this.nodes.filter(n => n.userData.layer === 0).length) * (audioLength * 0.2));
+                    } else if (layer === 4) {
+                        // Output layer - use treble frequencies
+                        freqIndex = Math.floor(audioLength * 0.7 + (i / this.nodes.filter(n => n.userData.layer === 4).length) * (audioLength * 0.3));
+                    } else {
+                        // Hidden layers - use mid frequencies
+                        freqIndex = Math.floor(audioLength * 0.2 + (i / nodeCount) * (audioLength * 0.5));
+                    }
+                    
+                    const rawActivation = audioData ? (audioData[freqIndex] / 255) : 0.3;
+                    const activation = rawActivation * settings.sensitivity;
+                    node.userData.activation = activation;
+                    
+                    // Enhanced scaling with layer-specific multipliers
+                    const layerMultiplier = layer === 0 || layer === 4 ? 1.3 : 1.0; // Input/output layers more prominent
+                    const scale = Math.min((1 + activation * settings.intensity * 2.5 * layerMultiplier) * settings.zoom, 3.5);
+                    node.scale.setScalar(scale);
+                    
+                    // Enhanced pulsing effect
+                    const pulseIntensity = Math.sin(this.time * 4 + node.userData.pulseOffset) * 0.3 + 0.7;
+                    const finalScale = scale * (0.8 + activation * 0.4 * pulseIntensity);
+                    node.scale.setScalar(finalScale);
+                    
+                    // More frequent and vibrant color updates
+                    if (i % 2 === 0) { // Update colors every other frame for better reactivity
+                        const baseHue = layer * 0.15; // Different base hue per layer
+                        const hue = (baseHue + activation * settings.colorshift + this.time * 0.12) % 1;
+                        const saturation = 0.9 + activation * 0.1;
+                        const lightness = 0.4 + activation * 0.5 + pulseIntensity * 0.2;
+                        node.material.color.setHSL(hue, saturation, lightness);
+                        node.material.opacity = 0.8 + activation * 0.2;
+                    }
+                    
+                    // Keep nodes in their original positions (static)
+                    node.position.copy(node.userData.basePosition);
+                }
+
+                // Enhanced connection updates with much better visibility and reactivity
+                const connectionCount = this.connections.length;
+                for (let i = 0; i < connectionCount; i++) {
+                    const connection = this.connections[i];
+                    const node1 = connection.userData.node1;
+                    const node2 = connection.userData.node2;
+                    const strength = (node1.userData.activation + node2.userData.activation) * 0.5;
+                    const baseOpacity = connection.userData.baseOpacity || 0.4;
+                    
+                    // Much more visible and reactive connections
+                    const pulseEffect = Math.sin(this.time * 6 + i * 0.1) * 0.3 + 0.7;
+                    const finalOpacity = Math.min(baseOpacity + strength * 2.5 * pulseEffect, 1.0);
+                    connection.material.opacity = finalOpacity;
+                    
+                    // Update connection positions to ensure they span the full network
+                    const positions = connection.userData.positions;
+                    positions[0] = node1.position.x;
+                    positions[1] = node1.position.y;
+                    positions[2] = node1.position.z;
+                    positions[3] = node2.position.x;
+                    positions[4] = node2.position.y;
+                    positions[5] = node2.position.z;
+                    
+                    connection.geometry.attributes.position.needsUpdate = true;
+                    
+                    // More frequent and dynamic color updates for connections
+                    if (i % 3 === 0) { // Update colors every 3rd frame
+                        const layerHue = (node1.userData.layer + node2.userData.layer) * 0.1;
+                        const hue = (layerHue + strength * settings.colorshift + this.time * 0.08) % 1;
+                        const saturation = 0.8 + strength * 0.2;
+                        const lightness = 0.5 + strength * 0.4;
+                        connection.material.color.setHSL(hue, saturation, lightness);
+                    }
+                }
+
+                // Update point light for better depth perception
+                if (this.pointLight) {
+                    const lightIntensity = 1.5 + analysis.average * 2 * settings.contrast;
+                    this.pointLight.intensity = lightIntensity;
+                    
+                    const lightHue = (analysis.peak * settings.colorshift + this.time * 0.1) % 1;
+                    this.pointLight.color.setHSL(lightHue, 0.8, 0.6);
+                }
+            }
+
+            updateColors(colors) {
+                this.colors = colors;
+                this.nodes.forEach(node => {
+                    node.material.color.setHex(colors.primary);
+                    node.material.emissive.setHex(colors.primary);
+                });
+                this.connections.forEach(connection => {
+                    connection.material.color.setHex(colors.secondary);
+                });
+                if (this.pointLight) {
+                    this.pointLight.color.setHex(colors.accent);
+                }
+            }
+
+            dispose() {
+                this.nodes.forEach(node => {
+                    this.scene.remove(node);
+                    node.geometry.dispose();
+                    node.material.dispose();
+                });
+                this.connections.forEach(connection => {
+                    this.scene.remove(connection);
+                    connection.geometry.dispose();
+                    connection.material.dispose();
+                });
+                this.nodes = [];
+                this.connections = [];
+            }
+        }
+
+        // Fixed Enhanced Kaleidoscope Visualizer
+        class EnhancedKaleidoscopeVisualizer {
+            constructor(scene, colors, performance) {
+                this.scene = scene;
+                this.colors = colors;
+                this.performance = performance;
+                this.segments = [];
+                this.mirrors = [];
+                this.time = 0;
+                this.createKaleidoscope();
+            }
+
+            createKaleidoscope() {
+                const segmentCount = 12;
+                const particlesPerSegment = this.performance === 'high' ? 20 : this.performance === 'medium' ? 15 : 10;
+
+                for (let segment = 0; segment < segmentCount; segment++) {
+                    const segmentGroup = new THREE.Group();
+                    
+                    for (let p = 0; p < particlesPerSegment; p++) {
+                        const geometry = new THREE.OctahedronGeometry(0.1 + Math.random() * 0.15);
+                        const material = new THREE.MeshPhongMaterial({
+                            color: this.colors.primary,
+                            emissive: this.colors.primary,
+                            emissiveIntensity: 0.8,
+                            transparent: true,
+                            opacity: 0.8
+                        });
+                        
+                        const particle = new THREE.Mesh(geometry, material);
+                        
+                        // Position particles in a pattern
+                        const angle = (p / particlesPerSegment) * Math.PI * 2;
+                        const radius = 1 + Math.random() * 3;
+                        particle.position.set(
+                            Math.cos(angle) * radius,
+                            Math.sin(angle) * radius,
+                            (Math.random() - 0.5) * 2
+                        );
+                        
+                        particle.userData = {
+                            basePosition: particle.position.clone(),
+                            rotSpeed: {
+                                x: 0.01 + Math.random() * 0.02,
+                                y: 0.01 + Math.random() * 0.02,
+                                z: 0.01 + Math.random() * 0.02
+                            },
+                            originalAngle: angle,
+                            originalRadius: radius,
+                            pulseOffset: Math.random() * Math.PI * 2
+                        };
+                        
+                        segmentGroup.add(particle);
+                    }
+                    
+                    // Position each segment around a circle
+                    const segmentAngle = (segment / segmentCount) * Math.PI * 2;
+                    segmentGroup.rotation.z = segmentAngle;
+                    
+                    this.segments.push(segmentGroup);
+                    this.scene.add(segmentGroup);
+                }
+
+                // Add mirror planes for true kaleidoscope effect
+                for (let m = 0; m < 6; m++) {
+                    const mirrorGeometry = new THREE.PlaneGeometry(10, 10);
+                    const mirrorMaterial = new THREE.MeshPhongMaterial({
+                        color: this.colors.accent,
+                        transparent: true,
+                        opacity: 0.1,
+                        side: THREE.DoubleSide
+                    });
+                    
+                    const mirror = new THREE.Mesh(mirrorGeometry, mirrorMaterial);
+                    const mirrorAngle = (m / 6) * Math.PI * 2;
+                    mirror.rotation.z = mirrorAngle;
+                    mirror.position.x = Math.cos(mirrorAngle) * 5;
+                    mirror.position.y = Math.sin(mirrorAngle) * 5;
+                    
+                    this.mirrors.push(mirror);
+                    this.scene.add(mirror);
+                }
+
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.7);
+                this.scene.add(ambientLight);
+
+                const pointLight = new THREE.PointLight(this.colors.primary, 2, 50);
+                pointLight.position.set(0, 0, 10);
+                this.scene.add(pointLight);
+                this.pointLight = pointLight;
+            }
+
+            update(audioData, settings, analysis) {
+                if (!audioData) {
+                    const time = Date.now() * 0.001;
+                    audioData = new Uint8Array(1024);
+                    for (let i = 0; i < audioData.length; i++) {
+                        audioData[i] = Math.sin(time + i * 0.02) * 60 + 120;
+                    }
+                }
+
+                this.time += 0.016 * settings.speed;
+
+                this.segments.forEach((segment, segmentIndex) => {
+                    // Rotate the entire segment
+                    segment.rotation.z += 0.005 * settings.speed * settings.rotation;
+                    
+                    segment.children.forEach((particle, particleIndex) => {
+                        const freqIndex = Math.floor(((segmentIndex * segment.children.length + particleIndex) / (this.segments.length * segment.children.length)) * audioData.length);
+                        const amplitude = audioData[freqIndex] / 255;
+                        
+                        // Scale based on audio
+                        const scale = (1 + amplitude * settings.intensity * 3) * settings.zoom;
+                        particle.scale.setScalar(scale);
+                        
+                        // Update position with kaleidoscope effect
+                        const baseRadius = particle.userData.originalRadius;
+                        const pulseRadius = baseRadius + amplitude * settings.orbsize * 2;
+                        const angle = particle.userData.originalAngle + this.time * 0.2 * settings.rotation;
+                        
+                        particle.position.x = Math.cos(angle) * pulseRadius + settings.center;
+                        particle.position.y = Math.sin(angle) * pulseRadius;
+                        particle.position.z = Math.sin(this.time + particle.userData.pulseOffset) * amplitude * 2;
+                        
+                        // Rotate individual particles
+                        particle.rotation.x += particle.userData.rotSpeed.x * settings.speed;
+                        particle.rotation.y += particle.userData.rotSpeed.y * settings.speed;
+                        particle.rotation.z += particle.userData.rotSpeed.z * settings.speed;
+                        
+                        // Update material properties
+                        particle.material.emissiveIntensity = (0.8 + amplitude * 3) * settings.contrast;
+                        
+                        const hue = (amplitude * settings.colorshift + this.time * 0.1 + segmentIndex * 0.1) % 1;
+                        particle.material.color.setHSL(hue, 0.9, 0.6 + amplitude * 0.4);
+                        particle.material.emissive.setHSL(hue, 1.0, 0.5 + amplitude * 0.3);
+                    });
+                });
+
+                // Update mirrors
+                this.mirrors.forEach((mirror, index) => {
+                    mirror.rotation.z += 0.002 * settings.speed * settings.rotation;
+                    mirror.material.opacity = 0.05 + analysis.average * 0.2;
+                });
+            }
+
+            updateColors(colors) {
+                this.colors = colors;
+                this.segments.forEach(segment => {
+                    segment.children.forEach(particle => {
+                        particle.material.color.setHex(colors.primary);
+                        particle.material.emissive.setHex(colors.primary);
+                    });
+                });
+                this.mirrors.forEach(mirror => {
+                    mirror.material.color.setHex(colors.accent);
+                });
+                if (this.pointLight) {
+                    this.pointLight.color.setHex(colors.primary);
+                }
+            }
+
+            dispose() {
+                this.segments.forEach(segment => {
+                    segment.children.forEach(particle => {
+                        particle.geometry.dispose();
+                        particle.material.dispose();
+                    });
+                    this.scene.remove(segment);
+                });
+                this.mirrors.forEach(mirror => {
+                    this.scene.remove(mirror);
+                    mirror.geometry.dispose();
+                    mirror.material.dispose();
+                });
+                this.segments = [];
+                this.mirrors = [];
+            }
+        }
+
+        // 3D Tunnel Visualizer - Proper tunnel with walls
+        class EnhancedTunnelVisualizer {
+            constructor(scene, colors, performance) {
+                this.scene = scene;
+                this.colors = colors;
+                this.performance = performance;
+                this.tunnelSegments = [];
+                this.tunnelWalls = [];
+                this.time = 0;
+                this.createTunnel();
+            }
+
+            createTunnel() {
+                const segmentCount = this.performance === 'high' ? 40 : this.performance === 'medium' ? 30 : 20;
+                const segmentLength = 2.0;
+                const tunnelRadius = 4.0;
+                const wallSegments = this.performance === 'high' ? 16 : this.performance === 'medium' ? 12 : 8;
+                
+                // Create tunnel segments with walls
+                for (let i = 0; i < segmentCount; i++) {
+                    const segmentGroup = new THREE.Group();
+                    const zPosition = -i * segmentLength;
+                    
+                    // Create tunnel wall segments
+                    for (let j = 0; j < wallSegments; j++) {
+                        const angle = (j / wallSegments) * Math.PI * 2;
+                        const nextAngle = ((j + 1) / wallSegments) * Math.PI * 2;
+                        
+                        // Create wall segment geometry
+                        const geometry = new THREE.PlaneGeometry(
+                            tunnelRadius * Math.sin(Math.PI / wallSegments) * 2,
+                            segmentLength
+                        );
+                        
+                        const material = new THREE.MeshBasicMaterial({
+                            color: this.colors.primary,
+                            transparent: true,
+                            opacity: 0.6,
+                            side: THREE.DoubleSide,
+                            wireframe: false
+                        });
+                        
+                        const wallSegment = new THREE.Mesh(geometry, material);
+                        
+                        // Position wall segment
+                        const x = Math.cos(angle) * tunnelRadius;
+                        const y = Math.sin(angle) * tunnelRadius;
+                        wallSegment.position.set(x, y, zPosition);
+                        wallSegment.lookAt(0, 0, zPosition);
+                        wallSegment.rotateY(Math.PI / 2);
+                        
+                        wallSegment.userData = {
+                            segmentIndex: i,
+                            wallIndex: j,
+                            angle: angle,
+                            originalZ: zPosition,
+                            baseOpacity: 0.6
+                        };
+                        
+                        segmentGroup.add(wallSegment);
+                        this.tunnelWalls.push(wallSegment);
+                    }
+                    
+                    // Add glowing ring at each segment for structure
+                    const ringGeometry = new THREE.RingGeometry(tunnelRadius * 0.9, tunnelRadius * 1.1, wallSegments);
+                    const ringMaterial = new THREE.MeshBasicMaterial({
+                        color: this.colors.accent,
+                        transparent: true,
+                        opacity: 0.3,
+                        side: THREE.DoubleSide
+                    });
+                    
+                    const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+                    ring.position.z = zPosition;
+                    ring.userData = {
+                        segmentIndex: i,
+                        originalZ: zPosition,
+                        type: 'ring'
+                    };
+                    
+                    segmentGroup.add(ring);
+                    this.tunnelSegments.push(segmentGroup);
+                    this.scene.add(segmentGroup);
+                }
+
+                // Add atmospheric fog for depth
+                this.scene.fog = new THREE.Fog(0x000000, 5, segmentCount * segmentLength * 0.8);
+                
+                // Minimal lighting for tunnel effect
+                const ambientLight = new THREE.AmbientLight(0x222222, 0.3);
+                this.scene.add(ambientLight);
+                
+                // Point light that moves through tunnel
+                const pointLight = new THREE.PointLight(this.colors.primary, 2, 15);
+                pointLight.position.set(0, 0, 5);
+                this.scene.add(pointLight);
+                this.pointLight = pointLight;
+            }
+
+            update(audioData, settings, analysis) {
+                if (!audioData) {
+                    const time = Date.now() * 0.001;
+                    audioData = new Uint8Array(1024);
+                    for (let i = 0; i < audioData.length; i++) {
+                        audioData[i] = Math.sin(time + i * 0.02) * 60 + 120;
+                    }
+                }
+
+                this.time += 0.016 * settings.speed;
+                const tunnelSpeed = 0.3 * settings.speed;
+
+                // Update tunnel segments - move them forward to create tunnel effect
+                this.tunnelSegments.forEach((segment, segmentIndex) => {
+                    // Move segment forward
+                    segment.position.z += tunnelSpeed;
+                    
+                    // Reset segment position when it passes the camera
+                    if (segment.position.z > 10) {
+                        segment.position.z = -this.tunnelSegments.length * 2.0;
+                    }
+                    
+                    // Audio-reactive effects on tunnel walls
+                    segment.children.forEach((child, childIndex) => {
+                        if (child.userData.type === 'ring') {
+                            // Update ring effects
+                            const freqIndex = Math.floor((segmentIndex / this.tunnelSegments.length) * audioData.length);
+                            const amplitude = audioData[freqIndex] / 255;
+                            
+                            child.material.opacity = (0.2 + amplitude * 0.6) * settings.contrast;
+                            
+                            const hue = (amplitude * settings.colorshift + this.time * 0.1 + segmentIndex * 0.05) % 1;
+                            child.material.color.setHSL(hue, 0.8, 0.5 + amplitude * 0.3);
+                            
+                            // Scale ring based on audio
+                            const scale = (1 + amplitude * settings.intensity * 0.5) * settings.zoom;
+                            child.scale.setScalar(scale);
+                        }
+                    });
+                });
+
+                // Update tunnel walls with enhanced audio reactivity
+                this.tunnelWalls.forEach((wall, wallIndex) => {
+                    const segmentIndex = wall.userData.segmentIndex;
+                    const freqIndex = Math.floor((wallIndex / this.tunnelWalls.length) * audioData.length);
+                    const amplitude = audioData[freqIndex] / 255;
+                    
+                    // Enhanced audio-reactive opacity with pulsing
+                    const baseOpacity = wall.userData.baseOpacity;
+                    const pulseIntensity = Math.sin(this.time * 3 + wallIndex * 0.5) * 0.2 + 0.8;
+                    wall.material.opacity = (baseOpacity + amplitude * 0.6 * pulseIntensity) * settings.contrast;
+                    
+                    // Dynamic color cycling with frequency-based hues
+                    const bassInfluence = analysis.bass * 0.4;
+                    const midInfluence = analysis.mid * 0.3;
+                    const trebleInfluence = analysis.treble * 0.3;
+                    const hue = (amplitude * settings.colorshift + bassInfluence + this.time * 0.08 + segmentIndex * 0.05 + wall.userData.wallIndex * 0.15) % 1;
+                    wall.material.color.setHSL(hue, 0.8 + amplitude * 0.2, 0.3 + amplitude * 0.5 + midInfluence * 0.3);
+                    
+                    // Enhanced wall movement with audio-reactive distortion
+                    const originalAngle = wall.userData.angle;
+                    const radiusVariation = 1 + amplitude * settings.orbsize * 0.4;
+                    const tunnelRadius = 4.0 * radiusVariation * settings.zoom;
+                    
+                    // Add audio-reactive warping
+                    const warpAmount = amplitude * settings.intensity * 0.5;
+                    const angleOffset = this.time * settings.rotation * 0.15 + Math.sin(this.time * 2 + wallIndex * 0.3) * warpAmount;
+                    
+                    const x = Math.cos(originalAngle + angleOffset) * tunnelRadius + settings.center * 3;
+                    const y = Math.sin(originalAngle + angleOffset) * tunnelRadius;
+                    
+                    // Add subtle Z-axis movement for depth variation
+                    const zOffset = Math.sin(this.time * 1.5 + wallIndex * 0.2) * amplitude * 0.5;
+                    
+                    wall.position.x = x;
+                    wall.position.y = y;
+                    wall.position.z += zOffset * 0.1;
+                    
+                    // Scale walls based on audio for breathing effect
+                    const scaleVariation = 1 + amplitude * settings.intensity * 0.3;
+                    wall.scale.set(scaleVariation, scaleVariation, 1);
+                });
+
+                // Enhanced point light with audio-reactive movement and effects
+                if (this.pointLight) {
+                    // Dynamic light movement through tunnel with audio influence
+                    const baseMovement = Math.sin(this.time * 0.8) * 4;
+                    const audioMovement = (analysis.bass * 2 + analysis.mid * 1.5) * settings.orbsize;
+                    this.pointLight.position.z = 5 + baseMovement + audioMovement;
+                    
+                    // Audio-reactive side-to-side movement
+                    this.pointLight.position.x = Math.cos(this.time * 0.6) * analysis.treble * 2 * settings.orbsize + settings.center * 2;
+                    this.pointLight.position.y = Math.sin(this.time * 0.4) * analysis.mid * 1.5 * settings.orbsize;
+                    
+                    // Dynamic intensity based on multiple audio frequencies
+                    const bassBoost = analysis.bass * 4;
+                    const midBoost = analysis.mid * 2;
+                    const trebleBoost = analysis.treble * 1.5;
+                    this.pointLight.intensity = (3 + bassBoost + midBoost + trebleBoost) * settings.contrast;
+                    
+                    // Enhanced color cycling with frequency separation
+                    const colorPhase = this.time * settings.colorshift * 0.3;
+                    const bassHue = (analysis.bass * 0.6 + colorPhase) % 1;
+                    const midHue = (analysis.mid * 0.4 + colorPhase * 1.2) % 1;
+                    const trebleHue = (analysis.treble * 0.8 + colorPhase * 0.8) % 1;
+                    
+                    // Blend hues based on frequency dominance
+                    const dominantFreq = Math.max(analysis.bass, analysis.mid, analysis.treble);
+                    let finalHue = bassHue;
+                    if (analysis.mid === dominantFreq) finalHue = midHue;
+                    if (analysis.treble === dominantFreq) finalHue = trebleHue;
+                    
+                    this.pointLight.color.setHSL(finalHue, 0.9, 0.7);
+                    
+                    // Adjust light distance based on intensity for better tunnel illumination
+                    this.pointLight.distance = 20 + analysis.average * 15 * settings.intensity;
+                }
+            }
+
+            updateColors(colors) {
+                this.colors = colors;
+                
+                // Update tunnel wall colors
+                this.tunnelWalls.forEach(wall => {
+                    wall.material.color.setHex(colors.primary);
+                });
+                
+                // Update ring colors
+                this.tunnelSegments.forEach(segment => {
+                    segment.children.forEach(child => {
+                        if (child.userData.type === 'ring') {
+                            child.material.color.setHex(colors.accent);
+                        }
+                    });
+                });
+                
+                if (this.pointLight) {
+                    this.pointLight.color.setHex(colors.primary);
+                }
+            }
+
+            dispose() {
+                // Dispose tunnel segments and their children
+                this.tunnelSegments.forEach(segment => {
+                    segment.children.forEach(child => {
+                        child.geometry.dispose();
+                        child.material.dispose();
+                    });
+                    this.scene.remove(segment);
+                });
+                
+                this.tunnelSegments = [];
+                this.tunnelWalls = [];
+                this.scene.fog = null;
+            }
+
+        }
+
+        // Geometric Laser Pattern EDM Lightshow - Based on provided image
+        class EDMLightshowVisualizer {
+            constructor(scene, colors, performance) {
+                this.scene = scene;
+                this.colors = colors;
+                this.performance = performance;
+                this.laserLines = [];
+                this.centerPoints = [];
+                this.time = 0;
+                this.createGeometricLasers();
+            }
+
+            createGeometricLasers() {
+                const beamLength = 25;
+                const beamWidth = 0.08;
+                
+                // Create main geometric laser pattern - 8 primary beams forming star pattern
+                const primaryAngles = [0, 45, 90, 135, 180, 225, 270, 315];
+                
+                primaryAngles.forEach((angle, index) => {
+                    const radians = (angle * Math.PI) / 180;
+                    
+                    // Create main laser beam
+                    const geometry = new THREE.PlaneGeometry(beamWidth, beamLength);
+                    const material = new THREE.MeshBasicMaterial({
+                        color: this.colors.primary,
+                        transparent: true,
+                        opacity: 0.9,
+                        side: THREE.DoubleSide,
+                        blending: THREE.AdditiveBlending
+                    });
+                    
+                    const laser = new THREE.Mesh(geometry, material);
+                    laser.position.set(
+                        Math.cos(radians) * beamLength * 0.5,
+                        Math.sin(radians) * beamLength * 0.5,
+                        0
+                    );
+                    laser.rotation.z = radians + Math.PI / 2;
+                    
+                    laser.userData = {
+                        angle: radians,
+                        baseIntensity: 0.9,
+                        pulseOffset: index * 0.5,
+                        type: 'primary'
+                    };
+                    
+                    this.laserLines.push(laser);
+                    this.scene.add(laser);
+                    
+                    // Add glow effect
+                    const glowGeometry = new THREE.PlaneGeometry(beamWidth * 3, beamLength);
+                    const glowMaterial = new THREE.MeshBasicMaterial({
+                        color: this.colors.accent,
+                        transparent: true,
+                        opacity: 0.3,
+                        side: THREE.DoubleSide,
+                        blending: THREE.AdditiveBlending
+                    });
+                    
+                    const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+                    glow.position.copy(laser.position);
+                    glow.rotation.copy(laser.rotation);
+                    
+                    laser.userData.glow = glow;
+                    this.scene.add(glow);
+                });
+
+                // Create secondary intersecting beams for more complex geometry
+                if (this.performance !== 'low') {
+                    const secondaryAngles = [22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5];
+                    
+                    secondaryAngles.forEach((angle, index) => {
+                        const radians = (angle * Math.PI) / 180;
+                        
+                        const geometry = new THREE.PlaneGeometry(beamWidth * 0.6, beamLength * 0.8);
+                        const material = new THREE.MeshBasicMaterial({
+                            color: this.colors.secondary,
+                            transparent: true,
+                            opacity: 0.6,
+                            side: THREE.DoubleSide,
+                            blending: THREE.AdditiveBlending
+                        });
+                        
+                        const laser = new THREE.Mesh(geometry, material);
+                        laser.position.set(
+                            Math.cos(radians) * beamLength * 0.4,
+                            Math.sin(radians) * beamLength * 0.4,
+                            0.1
+                        );
+                        laser.rotation.z = radians + Math.PI / 2;
+                        
+                        laser.userData = {
+                            angle: radians,
+                            baseIntensity: 0.6,
+                            pulseOffset: index * 0.3,
+                            type: 'secondary'
+                        };
+                        
+                        this.laserLines.push(laser);
+                        this.scene.add(laser);
+                    });
+                }
+
+                // Create center intersection points
+                for (let i = 0; i < 3; i++) {
+                    const pointGeometry = new THREE.SphereGeometry(0.1 + i * 0.05, 8, 8);
+                    const pointMaterial = new THREE.MeshBasicMaterial({
+                        color: this.colors.accent,
+                        transparent: true,
+                        opacity: 0.8,
+                        blending: THREE.AdditiveBlending
+                    });
+                    
+                    const point = new THREE.Mesh(pointGeometry, pointMaterial);
+                    point.position.set(0, 0, i * 0.2 - 0.2);
+                    point.userData = {
+                        baseScale: 1 + i * 0.3,
+                        pulseOffset: i * Math.PI * 0.7
+                    };
+                    
+                    this.centerPoints.push(point);
+                    this.scene.add(point);
+                }
+
+                // Dark background for better laser visibility
+                this.scene.fog = new THREE.Fog(0x000000, 10, 100);
+                
+                // Minimal ambient lighting
+                const ambientLight = new THREE.AmbientLight(0x111111, 0.1);
+                this.scene.add(ambientLight);
+            }
+
+            update(audioData, settings, analysis) {
+                if (!audioData) {
+                    const time = Date.now() * 0.001;
+                    audioData = new Uint8Array(1024);
+                    for (let i = 0; i < audioData.length; i++) {
+                        audioData[i] = Math.sin(time + i * 0.02) * 60 + 120;
+                    }
+                }
+
+                this.time += 0.016 * settings.speed;
+
+                // Update center intersection points
+                this.centerPoints.forEach((point, index) => {
+                    const pulseIntensity = Math.sin(this.time * 2 + point.userData.pulseOffset) * 0.5 + 0.5;
+                    const audioBoost = (analysis.bass * 0.6 + analysis.mid * 0.3 + analysis.treble * 0.1);
+                    
+                    const scale = point.userData.baseScale * (1 + audioBoost * settings.intensity * 2) * settings.zoom;
+                    point.scale.setScalar(scale);
+                    
+                    const opacity = (0.5 + pulseIntensity * 0.5 + audioBoost) * settings.contrast;
+                    point.material.opacity = Math.min(opacity, 1.0);
+                    
+                    const hue = (audioBoost * settings.colorshift + this.time * 0.1 + index * 0.2) % 1;
+                    point.material.color.setHSL(hue, 0.9, 0.7);
+                });
+
+                // Update geometric laser lines
+                this.laserLines.forEach((laser, index) => {
+                    const isPrimary = laser.userData.type === 'primary';
+                    const freqIndex = Math.floor((index / this.laserLines.length) * audioData.length);
+                    const amplitude = audioData[freqIndex] / 255;
+                    
+                    // Audio-reactive intensity
+                    const baseIntensity = laser.userData.baseIntensity;
+                    const audioIntensity = isPrimary ?
+                        (analysis.bass * 0.4 + analysis.mid * 0.4 + analysis.treble * 0.2) :
+                        (analysis.treble * 0.6 + analysis.mid * 0.4);
+                    
+                    const finalIntensity = (baseIntensity + audioIntensity * settings.intensity) * settings.contrast;
+                    laser.material.opacity = Math.min(finalIntensity, 1.0);
+                    
+                    // Dynamic color shifting
+                    const colorPhase = this.time * settings.colorshift * 0.5 + laser.userData.pulseOffset;
+                    const hue = (amplitude * settings.colorshift + colorPhase) % 1;
+                    laser.material.color.setHSL(hue, 0.9, 0.6 + amplitude * 0.3);
+                    
+                    // Glow effect updates
+                    if (laser.userData.glow) {
+                        laser.userData.glow.material.opacity = Math.min(finalIntensity * 0.4, 0.6);
+                        laser.userData.glow.material.color.setHSL(hue, 0.8, 0.5);
+                    }
+                    
+                    // Geometric transformations based on audio
+                    const rotationAmount = settings.rotation * settings.speed * 0.01;
+                    const audioRotation = amplitude * settings.warp * 0.1;
+                    
+                    // Rotate around center while maintaining geometric pattern
+                    const currentAngle = laser.userData.angle + rotationAmount + audioRotation;
+                    const distance = 25 * 0.5 * (1 + amplitude * settings.orbsize * 0.3) * settings.zoom;
+                    
+                    laser.position.set(
+                        Math.cos(currentAngle) * distance + settings.center * 5,
+                        Math.sin(currentAngle) * distance,
+                        laser.position.z
+                    );
+                    laser.rotation.z = currentAngle + Math.PI / 2;
+                    
+                    // Scale based on audio for dynamic effect
+                    const scaleMultiplier = 1 + amplitude * settings.radius * 0.5;
+                    laser.scale.set(scaleMultiplier, 1 + audioIntensity * settings.flow * 0.3, 1);
+                    
+                    // Update glow position and rotation
+                    if (laser.userData.glow) {
+                        laser.userData.glow.position.copy(laser.position);
+                        laser.userData.glow.rotation.copy(laser.rotation);
+                        laser.userData.glow.scale.copy(laser.scale);
+                    }
+                });
+            }
+
+            updateColors(colors) {
+                this.colors = colors;
+                
+                this.laserLines.forEach(laser => {
+                    if (laser.userData.type === 'primary') {
+                        laser.material.color.setHex(colors.primary);
+                    } else {
+                        laser.material.color.setHex(colors.secondary);
+                    }
+                    
+                    if (laser.userData.glow) {
+                        laser.userData.glow.material.color.setHex(colors.accent);
+                    }
+                });
+                
+                this.centerPoints.forEach(point => {
+                    point.material.color.setHex(colors.accent);
+                });
+            }
+
+            dispose() {
+                this.laserLines.forEach(laser => {
+                    this.scene.remove(laser);
+                    laser.geometry.dispose();
+                    laser.material.dispose();
+                    
+                    if (laser.userData.glow) {
+                        this.scene.remove(laser.userData.glow);
+                        laser.userData.glow.geometry.dispose();
+                        laser.userData.glow.material.dispose();
+                    }
+                });
+                
+                this.centerPoints.forEach(point => {
+                    this.scene.remove(point);
+                    point.geometry.dispose();
+                    point.material.dispose();
+                });
+                
+                this.laserLines = [];
+                this.centerPoints = [];
+                this.scene.fog = null;
+            }
+        }
+
+        // Fullscreen Psychedelic Fractal Visualizer
+        class FullscreenPsychedelicVisualizer {
+            constructor(scene, colors, performance) {
+                this.scene = scene;
+                this.colors = colors;
+                this.performance = performance;
+                this.time = 0;
+                this.plane = null;
+                this.createPsychedelicShader();
+            }
+
+            createPsychedelicShader() {
+                const geometry = new THREE.PlaneGeometry(2, 2);
+                
+                const material = new THREE.ShaderMaterial({
+                    uniforms: {
+                        u_res: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+                        u_time: { value: 0 },
+                        u_bass: { value: 0 },
+                        u_mid: { value: 0 },
+                        u_treble: { value: 0 },
+                        u_center: { value: new THREE.Vector2(0.0, 0.0) },
+                        u_scale: { value: 1.0 },
+                        u_rot: { value: 0 },
+                        u_symmetry: { value: 6.0 },
+                        u_maxIter: { value: 50.0 },
+                        u_warp: { value: 0.1 },
+                        u_distortion: { value: 0.5 },
+                        u_kaleidoscope: { value: 1.0 },
+                        u_morphing: { value: 0.8 },
+                        u_fractal: { value: 1.0 },
+                        colorPrimary: { value: new THREE.Color(this.colors.primary) },
+                        colorSecondary: { value: new THREE.Color(this.colors.secondary) },
+                        colorAccent: { value: new THREE.Color(this.colors.accent) }
+                    },
+                    vertexShader: `
+                        varying vec2 vUv;
+                        void main() {
+                            vUv = uv;
+                            gl_Position = vec4(position, 1.0);
+                        }
+                    `,
+                    fragmentShader: `
+                        precision mediump float;
+                        
+                        uniform vec2 u_res;
+                        uniform float u_time;
+                        uniform float u_bass;
+                        uniform float u_mid;
+                        uniform float u_treble;
+                        uniform vec2 u_center;
+                        uniform float u_scale;
+                        uniform float u_rot;
+                        uniform float u_symmetry;
+                        uniform float u_maxIter;
+                        uniform float u_warp;
+                        uniform float u_distortion;
+                        uniform float u_kaleidoscope;
+                        uniform float u_morphing;
+                        uniform float u_fractal;
+                        uniform vec3 colorPrimary;
+                        uniform vec3 colorSecondary;
+                        uniform vec3 colorAccent;
+                        
+                        varying vec2 vUv;
+
+                        mat2 rot(float a) { 
+                            float s = sin(a), c = cos(a); 
+                            return mat2(c, -s, s, c); 
+                        }
+
+                        vec2 distort(vec2 uv, float time, float intensity) {
+                            uv += vec2(
+                                sin(uv.y * 8.0 + time * 2.0) * intensity,
+                                cos(uv.x * 6.0 - time * 1.5) * intensity
+                            );
+                            
+                            float r = length(uv);
+                            float angle = atan(uv.y, uv.x);
+                            angle += sin(r * 5.0 + time) * intensity * 0.5;
+                            r += sin(angle * 3.0 + time * 0.7) * intensity * 0.3;
+                            
+                            return vec2(cos(angle) * r, sin(angle) * r);
+                        }
+
+                        vec2 kaleidoscope(vec2 uv, float sides, float morphing) {
+                            float angle = atan(uv.y, uv.x);
+                            float radius = length(uv);
+                            
+                            float dynamicSides = sides + sin(u_time * 0.3) * morphing * 2.0;
+                            float slice = 6.28318 / dynamicSides;
+                            angle = mod(angle, slice);
+                            if (angle > slice * 0.5) angle = slice - angle;
+                            
+                            angle += radius * morphing * 0.5 + u_time * 0.2;
+                            
+                            return vec2(cos(angle) * radius, sin(angle) * radius);
+                        }
+
+                        float fractalPattern(vec2 uv, float time, float depth) {
+                            vec2 z = vec2(0.0);
+                            vec2 c = uv;
+                            float it = 0.0;
+                            
+                            for(int i = 0; i < 50; i++) {
+                                if(it >= u_maxIter * depth) break;
+                                if(dot(z, z) > 4.0) break;
+                                
+                                vec2 z2 = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
+                                z2 += vec2(sin(time + it * 0.1), cos(time * 0.7 + it * 0.1)) * u_morphing * 0.1;
+                                z = z2;
+                                
+                                it += 1.0;
+                            }
+                            
+                            return it / (u_maxIter * depth);
+                        }
+
+                        void main() {
+                            vec2 uv = (vUv - 0.5) * 2.0;
+                            
+                            uv = distort(uv, u_time, u_distortion * (0.3 + u_bass * 0.7));
+                            
+                            float swirl = (0.15 + 0.35 * u_treble) * u_time + u_bass * 2.0;
+                            uv *= rot(u_rot + swirl);
+                            
+                            uv = kaleidoscope(uv, u_symmetry, u_morphing);
+                            
+                            uv += vec2(
+                                sin(uv.y * 12.0 + u_time * 1.8) * u_warp * (0.5 + u_mid * 0.5),
+                                sin(uv.x * 10.0 - u_time * 2.1) * u_warp * (0.5 + u_treble * 0.5)
+                            );
+                            
+                            vec2 c = u_center + uv * u_scale;
+                            
+                            float fractal1 = fractalPattern(c, u_time, 1.0);
+                            float fractal2 = fractalPattern(c * 1.5 + vec2(0.1, 0.0), u_time * 0.7, u_fractal);
+                            float fractal3 = fractalPattern(c * 0.7 + vec2(0.0, 0.1), u_time * 1.3, u_fractal * 0.5);
+                            
+                            float combined = (fractal1 + fractal2 * 0.7 + fractal3 * 0.5) / 2.2;
+                            
+                            float hue1 = fract(combined * 2.0 + u_time * 0.3 * (1.0 + u_bass * 2.0));
+                            float hue2 = fract(combined * 1.5 + u_time * 0.5 * (1.0 + u_mid * 1.5));
+                            float hue3 = fract(combined * 0.8 + u_time * 0.7 * (1.0 + u_treble * 1.0));
+                            
+                            vec3 color1 = mix(colorPrimary, colorSecondary, sin(hue1 * 6.28318) * 0.5 + 0.5);
+                            vec3 color2 = mix(colorSecondary, colorAccent, cos(hue2 * 4.0) * 0.5 + 0.5);
+                            vec3 color3 = mix(colorAccent, colorPrimary, sin(hue3 * 8.0) * 0.5 + 0.5);
+                            
+                            vec3 finalColor = mix(color1, color2, abs(sin(combined * 3.14159 + u_time)));
+                            finalColor = mix(finalColor, color3, abs(cos(combined * 6.28318 + u_time * 0.5)));
+                            
+                            float brightness = 1.0 + sin(combined * 5.0 + u_time * 2.0) * 0.3;
+                            brightness *= (1.0 + u_kaleidoscope * (u_bass * 0.8 + u_mid * 0.6 + u_treble * 0.4));
+                            
+                            finalColor *= brightness;
+                            
+                            float glow = smoothstep(0.0, 1.0, combined) * (0.3 + u_kaleidoscope * (u_treble * 0.7 + u_bass * 0.3));
+                            finalColor += glow * mix(colorAccent, colorPrimary, sin(u_time * 3.0) * 0.5 + 0.5);
+                            
+                            vec3 gray = vec3(dot(finalColor, vec3(0.299, 0.587, 0.114)));
+                            finalColor = mix(gray, finalColor, 1.5 + u_morphing * 0.5);
+                            
+                            finalColor = pow(finalColor, vec3(0.7));
+                            
+                            gl_FragColor = vec4(finalColor, 1.0);
+                        }
+                    `,
+                    transparent: false
+                });
+
+                this.plane = new THREE.Mesh(geometry, material);
+                this.scene.add(this.plane);
+            }
+
+            update(audioData, settings, analysis) {
+                if (!this.plane) return;
+
+                this.time += 0.016 * settings.speed;
+                
+                const uniforms = this.plane.material.uniforms;
+                uniforms.u_time.value = this.time * 0.5;
+                uniforms.u_bass.value = analysis.bass * settings.intensity;
+                uniforms.u_mid.value = analysis.mid * settings.intensity;
+                uniforms.u_treble.value = analysis.treble * settings.intensity;
+                uniforms.u_center.value.set(settings.center * 0.5, 0.0);
+                uniforms.u_scale.value = settings.zoom * 2.0;
+                uniforms.u_rot.value = this.time * 0.1 * settings.rotation;
+                uniforms.u_symmetry.value = settings.sides;
+                uniforms.u_maxIter.value = Math.min(settings.maxiter, 80);
+                uniforms.u_warp.value = settings.warp * (0.1 + analysis.bass * 0.3);
+                uniforms.u_distortion.value = settings.distortion * (0.5 + analysis.peak * 0.5);
+                uniforms.u_kaleidoscope.value = settings.kaleidoscope * (1.0 + analysis.treble * 0.5);
+                uniforms.u_morphing.value = settings.morphing * (0.8 + analysis.mid * 0.4);
+                uniforms.u_fractal.value = settings.fractal;
+                
+                uniforms.u_res.value.set(window.innerWidth, window.innerHeight);
+            }
+
+            updateColors(colors) {
+                this.colors = colors;
+                if (this.plane) {
+                    const uniforms = this.plane.material.uniforms;
+                    uniforms.colorPrimary.value.setHex(colors.primary);
+                    uniforms.colorSecondary.value.setHex(colors.secondary);
+                    uniforms.colorAccent.value.setHex(colors.accent);
+                }
+            }
+
+            dispose() {
+                if (this.plane) {
+                    this.scene.remove(this.plane);
+                    this.plane.geometry.dispose();
+                    this.plane.material.dispose();
+                    this.plane = null;
+                }
+            }
+        }
+
+        // Fullscreen DMT Tunnel Visualizer
+        class FullscreenDMTVisualizer {
+            constructor(scene, colors, performance) {
+                this.scene = scene;
+                this.colors = colors;
+                this.performance = performance;
+                this.time = 0;
+                this.plane = null;
+                this.createDMTShader();
+            }
+
+            createDMTShader() {
+                const geometry = new THREE.PlaneGeometry(2, 2);
+                
+                const material = new THREE.ShaderMaterial({
+                    uniforms: {
+                        u_res: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+                        u_time: { value: 0 },
+                        u_bass: { value: 0 },
+                        u_mid: { value: 0 },
+                        u_treble: { value: 0 },
+                        u_center: { value: new THREE.Vector2(0.0, 0.0) },
+                        u_zoom: { value: 1.0 },
+                        u_rotation: { value: 0.0 },
+                        u_warp: { value: 1.0 },
+                        u_flow: { value: 1.0 },
+                        u_complexity: { value: 1.5 },
+                        u_colorshift: { value: 2.0 },
+                        u_contrast: { value: 1.5 },
+                        colorPrimary: { value: new THREE.Color(this.colors.primary) },
+                        colorSecondary: { value: new THREE.Color(this.colors.secondary) },
+                        colorAccent: { value: new THREE.Color(this.colors.accent) }
+                    },
+                    vertexShader: `
+                        varying vec2 vUv;
+                        void main() {
+                            vUv = uv;
+                            gl_Position = vec4(position, 1.0);
+                        }
+                    `,
+                    fragmentShader: `
+                        precision mediump float;
+                        
+                        uniform vec2 u_res;
+                        uniform float u_time;
+                        uniform float u_bass;
+                        uniform float u_mid;
+                        uniform float u_treble;
+                        uniform vec2 u_center;
+                        uniform float u_zoom;
+                        uniform float u_rotation;
+                        uniform float u_warp;
+                        uniform float u_flow;
+                        uniform float u_complexity;
+                        uniform float u_colorshift;
+                        uniform float u_contrast;
+                        uniform vec3 colorPrimary;
+                        uniform vec3 colorSecondary;
+                        uniform vec3 colorAccent;
+                        
+                        varying vec2 vUv;
+
+                        mat2 rot(float a) {
+                            float c = cos(a), s = sin(a);
+                            return mat2(c, -s, s, c);
+                        }
+
+                        float pattern(vec2 p, float time) {
+                            float n = 0.0;
+                            n += sin(p.x * 2.0 + time) * cos(p.y * 1.5 + time * 0.7);
+                            n += sin(p.x * 3.0 + time * 1.3) * cos(p.y * 2.5 + time * 0.5);
+                            n += sin(length(p) * 4.0 + time * 2.0) * 0.5;
+                            return n * 0.33;
+                        }
+
+                        void main() {
+                            vec2 uv = (vUv - 0.5) * 2.0;
+                            
+                            uv = (uv - u_center) / u_zoom;
+                            
+                            float totalRotation = u_rotation + u_time * 0.1 + u_bass * 0.5;
+                            uv *= rot(totalRotation);
+                            
+                            float dist = length(uv);
+                            float angle = atan(uv.y, uv.x);
+                            
+                            float z = 1.0 / (dist + 0.1) - u_time * u_flow;
+                            
+                            vec2 flowUV = uv + vec2(
+                                sin(angle * 3.0 + u_time * 0.8) * u_warp * 0.3,
+                                cos(angle * 5.0 - u_time * 1.2) * u_warp * 0.2
+                            );
+                            
+                            float tunnel1 = sin(z * 20.0 + pattern(flowUV * 2.0, u_time) * u_complexity);
+                            float tunnel2 = cos(z * 15.0 + angle * 8.0 + u_time * 2.0);
+                            float tunnel3 = sin(dist * 40.0 - u_time * 3.0 + pattern(flowUV * u_complexity, u_time) * 5.0);
+                            
+                            float combined = (tunnel1 + tunnel2 * 0.7 + tunnel3 * 0.5) / 2.2;
+                            
+                            float lattice = sin(angle * 16.0 + u_time) * sin(z * 8.0 + u_time * 1.5);
+                            combined += lattice * 0.3;
+                            
+                            float colorPhase = combined + z * 0.3 + u_time * u_colorshift;
+                            
+                            vec3 color1 = mix(colorPrimary, colorSecondary, 
+                                sin(colorPhase + u_bass * 3.0) * 0.5 + 0.5);
+                            vec3 color2 = mix(colorSecondary, colorAccent, 
+                                cos(colorPhase * 1.5 + u_mid * 2.0) * 0.5 + 0.5);
+                            vec3 color3 = mix(colorAccent, colorPrimary, 
+                                sin(colorPhase * 0.7 + u_treble * 4.0) * 0.5 + 0.5);
+                            
+                            vec3 finalColor = mix(color1, color2, abs(combined));
+                            finalColor = mix(finalColor, color3, smoothstep(0.0, 1.0, abs(combined)));
+                            
+                            finalColor *= (1.0 + sin(z * 5.0 + u_time) * 0.2);
+                            
+                            float audioBoost = (u_bass * 0.8 + u_mid * 0.6 + u_treble * 0.4) * 2.0;
+                            finalColor *= (0.8 + audioBoost) * u_contrast;
+                            
+                            float energy = sin(z * 10.0 + u_time * 2.0 + combined * 5.0) * 0.3 + 0.7;
+                            finalColor *= energy;
+                            
+                            float glow = 1.0 / (1.0 + dist * dist);
+                            finalColor += glow * colorAccent * audioBoost * 0.3;
+                            
+                            finalColor = pow(finalColor, vec3(0.8));
+                            
+                            gl_FragColor = vec4(finalColor, 1.0);
+                        }
+                    `,
+                    transparent: false
+                });
+
+                this.plane = new THREE.Mesh(geometry, material);
+                this.scene.add(this.plane);
+            }
+
+            update(audioData, settings, analysis) {
+                if (!this.plane) return;
+
+                this.time += 0.016 * settings.speed;
+                
+                const uniforms = this.plane.material.uniforms;
+                uniforms.u_time.value = this.time * 0.3;
+                uniforms.u_bass.value = analysis.bass * settings.intensity;
+                uniforms.u_mid.value = analysis.mid * settings.intensity;
+                uniforms.u_treble.value = analysis.treble * settings.intensity;
+                uniforms.u_center.value.set(settings.center * 0.3, 0.0);
+                uniforms.u_zoom.value = settings.zoom * 0.8;
+                uniforms.u_rotation.value = this.time * 0.05 * settings.rotation;
+                uniforms.u_warp.value = settings.warp * (0.5 + analysis.bass * 0.8);
+                uniforms.u_flow.value = settings.flow * (0.8 + analysis.mid * 0.7);
+                uniforms.u_complexity.value = settings.complexity * (1.0 + analysis.treble * 0.5);
+                uniforms.u_colorshift.value = settings.colorshift * 0.5;
+                uniforms.u_contrast.value = settings.contrast;
+                
+                uniforms.u_res.value.set(window.innerWidth, window.innerHeight);
+            }
+
+            updateColors(colors) {
+                this.colors = colors;
+                if (this.plane) {
+                    const uniforms = this.plane.material.uniforms;
+                    uniforms.colorPrimary.value.setHex(colors.primary);
+                    uniforms.colorSecondary.value.setHex(colors.secondary);
+                    uniforms.colorAccent.value.setHex(colors.accent);
+                }
+            }
+
+            dispose() {
+                if (this.plane) {
+                    this.scene.remove(this.plane);
+                    this.plane.geometry.dispose();
+                    this.plane.material.dispose();
+                    this.plane = null;
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                new UltimateAudioVisualizer();
+            } catch (error) {
+                console.error('Failed to initialize visualizer:', error);
+                document.getElementById('error-text').textContent = 'Failed to initialize: ' + error.message;
+                document.getElementById('error-message').style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
