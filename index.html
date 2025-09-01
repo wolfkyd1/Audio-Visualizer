@@ -407,7 +407,7 @@
     
     <div class="info">
         <div>Press F11 for fullscreen</div>
-        <div>Use 1-6 keys to switch modes</div>
+        <div>Use 1-7 keys to switch modes</div>
         <div>Space to start/stop audio</div>
         <div>H to hide/show controls</div>
     </div>
@@ -430,9 +430,8 @@
             <select id="visualizer-mode">
                 <option value="fractal">🌀 Fractal Reactor</option>
                 <option value="neural">🧠 Neural Network</option>
-                <option value="kaleidoscope">💎 Kaleidoscope</option>
                 <option value="tunnel">🕳️ 3D Tunnel</option>
-                <option value="edm-lightshow">🎆 EDM Lightshow</option>
+                <option value="cosmic-spheres">🌌 Cosmic Spheres</option>
                 <option value="psychedelic">🌈 Psychedelic Fractal</option>
                 <option value="dmt">🔮 DMT Tunnel</option>
             </select>
@@ -488,7 +487,7 @@
                     <input type="range" id="orbsize" min="0.1" max="3" step="0.1" value="1">
                 </div>
                 <div class="control-group" id="radius-group">
-                    <label title="Controls the overall scale and spread of visual elements">📏 Scale: <span id="radius-value">1.0</span></label>
+                    <label title="Controls the overall scale and spread of visual elements">🔍 Scale: <span id="radius-value">1.0</span></label>
                     <input type="range" id="radius" min="0.1" max="3" step="0.1" value="1">
                 </div>
             </div>
@@ -617,15 +616,15 @@
                 };
 
                 this.audioAnalysis = {
-                    bass: 0, mid: 0, treble: 0, peak: 0, average: 0, history: []
+                    bass: 0, mid: 0, treble: 0, peak: 0, average: 0, history: [], 
+                    rms: 0, beat: false, energyTrend: 0
                 };
 
                 this.modeControls = {
                     fractal: ['sensitivity', 'speed', 'intensity', 'zoom', 'contrast', 'orbsize', 'colorshift', 'center', 'rotation'],
                     neural: ['sensitivity', 'speed', 'intensity', 'zoom', 'contrast', 'orbsize', 'colorshift', 'rotation'],
-                    kaleidoscope: ['sensitivity', 'speed', 'intensity', 'zoom', 'contrast', 'orbsize', 'colorshift', 'center', 'sides', 'rotation'],
                     tunnel: ['sensitivity', 'speed', 'intensity', 'zoom', 'contrast', 'colorshift', 'center', 'rotation', 'orbsize', 'warp'],
-                    'edm-lightshow': ['sensitivity', 'speed', 'intensity', 'zoom', 'contrast', 'orbsize', 'radius', 'colorshift', 'center', 'rotation', 'warp', 'flow'],
+                    'cosmic-spheres': ['sensitivity', 'speed', 'intensity', 'zoom', 'contrast', 'orbsize', 'radius', 'colorshift', 'center', 'rotation', 'warp', 'flow', 'sides', 'complexity'],
                     psychedelic: ['sensitivity', 'speed', 'intensity', 'zoom', 'contrast', 'colorshift', 'center', 'sides', 'rotation', 'warp', 'maxiter', 'distortion', 'kaleidoscope', 'morphing', 'fractal'],
                     dmt: ['sensitivity', 'speed', 'intensity', 'zoom', 'contrast', 'colorshift', 'center', 'rotation', 'warp', 'flow', 'complexity']
                 };
@@ -643,23 +642,17 @@
                         rotation: 0.5, warp: 0.1, maxiter: 30, complexity: 0.8,
                         distortion: 0.1, morphing: 0.3, fractal: 0.5
                     },
-                    kaleidoscope: {
-                        sensitivity: 2.5, speed: 1.8, intensity: 2.5, zoom: 1.1, contrast: 1.6,
-                        orbsize: 1.2, radius: 1.2, colorshift: 2.0, center: 0.0, sides: 8,
-                        rotation: 1.0, warp: 0.3, maxiter: 35, flow: 1.0, complexity: 1.2,
-                        distortion: 0.4, kaleidoscope: 1.2, morphing: 0.6, fractal: 1.0
-                    },
                     tunnel: {
                         sensitivity: 2.5, speed: 1.8, intensity: 2.0, zoom: 1.0, contrast: 1.4,
                         orbsize: 1.2, radius: 1.0, colorshift: 1.8, center: 0.0, sides: 6,
                         rotation: 0.6, warp: 0.4, maxiter: 25, flow: 1.0, complexity: 0.8,
                         distortion: 0.2, kaleidoscope: 0.6, morphing: 0.4, fractal: 0.7
                     },
-                    'edm-lightshow': {
-                        sensitivity: 2.5, speed: 1.5, intensity: 2.2, zoom: 1.0, contrast: 1.8,
-                        orbsize: 0.8, radius: 1.4, colorshift: 2.0, center: 0.0, sides: 8,
-                        rotation: 0.7, warp: 0.3, maxiter: 30, flow: 1.0, complexity: 1.0,
-                        distortion: 0.2, kaleidoscope: 0.8, morphing: 0.5, fractal: 0.8
+                    'cosmic-spheres': {
+                        sensitivity: 2.8, speed: 1.6, intensity: 2.4, zoom: 1.0, contrast: 1.6,
+                        orbsize: 1.2, radius: 1.8, colorshift: 2.2, center: 0.0, sides: 5,
+                        rotation: 0.8, warp: 0.6, maxiter: 30, flow: 1.4, complexity: 1.6,
+                        distortion: 0.3, kaleidoscope: 0.8, morphing: 0.5, fractal: 0.8
                     },
                     psychedelic: {
                         sensitivity: 3.0, speed: 1.2, intensity: 0.8, zoom: 1.2, contrast: 0.5,
@@ -688,8 +681,69 @@
 
                 this.fpsCounter = 0;
                 this.lastFpsTime = performance.now();
+                this.beatDetector = {
+                    history: [],
+                    threshold: 0.7,
+                    lastBeat: 0,
+                    energy: 0
+                };
+                this.spectrumAnalyzer = {
+                    frequencyBands: 32,
+                    smoothingFactor: 0.8,
+                    bandData: new Array(32).fill(0)
+                };
 
                 this.init();
+            }
+
+            detectBeats(audioData, analysis) {
+                if (!audioData) return false;
+                
+                // Calculate instantaneous energy
+                let energy = 0;
+                for (let i = 0; i < Math.min(audioData.length * 0.3, 256); i++) {
+                    energy += audioData[i] * audioData[i];
+                }
+                energy /= Math.min(audioData.length * 0.3, 256);
+                
+                this.beatDetector.history.push(energy);
+                if (this.beatDetector.history.length > 30) {
+                    this.beatDetector.history.shift();
+                }
+                
+                // Calculate average energy
+                const avgEnergy = this.beatDetector.history.reduce((sum, e) => sum + e, 0) / this.beatDetector.history.length;
+                
+                // Beat detection
+                const now = performance.now();
+                const timeSinceLastBeat = now - this.beatDetector.lastBeat;
+                const isBeat = energy > avgEnergy * 1.3 && timeSinceLastBeat > 300; // Min 300ms between beats
+                
+                if (isBeat) {
+                    this.beatDetector.lastBeat = now;
+                    return true;
+                }
+                return false;
+            }
+
+            analyzeSpectrum(audioData) {
+                if (!audioData) return;
+                
+                const bandsPerGroup = Math.floor(audioData.length / this.spectrumAnalyzer.frequencyBands);
+                
+                for (let i = 0; i < this.spectrumAnalyzer.frequencyBands; i++) {
+                    let bandSum = 0;
+                    const startIdx = i * bandsPerGroup;
+                    const endIdx = Math.min(startIdx + bandsPerGroup, audioData.length);
+                    
+                    for (let j = startIdx; j < endIdx; j++) {
+                        bandSum += audioData[j];
+                    }
+                    
+                    const bandAvg = bandSum / (endIdx - startIdx);
+                    const smoothing = this.spectrumAnalyzer.smoothingFactor;
+                    this.spectrumAnalyzer.bandData[i] = this.spectrumAnalyzer.bandData[i] * smoothing + bandAvg * (1 - smoothing);
+                }
             }
 
             showError(message) {
@@ -910,7 +964,7 @@
                         case 'Digit6':
                         case 'Digit7':
                             e.preventDefault();
-                            const modes = ['fractal', 'neural', 'kaleidoscope', 'tunnel', 'edm-lightshow', 'psychedelic', 'dmt'];
+                            const modes = ['fractal', 'neural', 'tunnel', 'cosmic-spheres', 'psychedelic', 'dmt'];
                             const modeIndex = parseInt(e.code.slice(-1)) - 1;
                             if (modes[modeIndex]) {
                                 const newMode = modes[modeIndex];
@@ -990,37 +1044,75 @@
             analyzeAudio(audioData) {
                 if (!audioData) return this.audioAnalysis;
                 
+                // Enhanced spectrum analysis
+                this.analyzeSpectrum(audioData);
+                
                 const bufferLength = audioData.length;
-                const bassEnd = Math.floor(bufferLength * 0.1);
-                const midEnd = Math.floor(bufferLength * 0.5);
+                const bassEnd = Math.floor(bufferLength * 0.12);
+                const midEnd = Math.floor(bufferLength * 0.45);
+                const trebleStart = Math.floor(bufferLength * 0.65);
                 
                 let bassSum = 0, midSum = 0, trebleSum = 0, peak = 0, average = 0;
                 
+                // Enhanced frequency analysis with better separation
                 for (let i = 0; i < bufferLength; i++) {
                     const value = audioData[i];
                     average += value;
                     peak = Math.max(peak, value);
                     
-                    if (i < bassEnd) bassSum += value;
-                    else if (i < midEnd) midSum += value;
-                    else trebleSum += value;
+                    if (i < bassEnd) {
+                        // Weight bass frequencies more heavily
+                        bassSum += value * (i < bassEnd * 0.5 ? 2.0 : 1.0);
+                    } else if (i < midEnd) {
+                        midSum += value;
+                    } else if (i >= trebleStart) {
+                        // Emphasize higher treble frequencies
+                        trebleSum += value * (i > trebleStart + (bufferLength - trebleStart) * 0.5 ? 1.5 : 1.0);
+                    }
                 }
                 
-                this.audioAnalysis.bass = (bassSum / bassEnd) / 255;
-                this.audioAnalysis.mid = (midSum / (midEnd - bassEnd)) / 255;
-                this.audioAnalysis.treble = (trebleSum / (bufferLength - midEnd)) / 255;
+                this.audioAnalysis.bass = Math.min((bassSum / (bassEnd * 1.5)) / 255, 1.0);
+                this.audioAnalysis.mid = Math.min((midSum / (midEnd - bassEnd)) / 255, 1.0);
+                this.audioAnalysis.treble = Math.min((trebleSum / (bufferLength - trebleStart * 0.8)) / 255, 1.0);
                 this.audioAnalysis.peak = peak / 255;
                 this.audioAnalysis.average = (average / bufferLength) / 255;
                 
+                // Beat detection
+                const isBeat = this.detectBeats(audioData, this.audioAnalysis);
+                this.audioAnalysis.beat = isBeat;
+                
+                // Calculate RMS for better energy detection
+                let rms = 0;
+                for (let i = 0; i < bufferLength; i++) {
+                    rms += audioData[i] * audioData[i];
+                }
+                this.audioAnalysis.rms = Math.sqrt(rms / bufferLength) / 255;
+                
+                // Store history for advanced analysis
                 this.audioAnalysis.history.push({
                     bass: this.audioAnalysis.bass,
                     mid: this.audioAnalysis.mid,
                     treble: this.audioAnalysis.treble,
+                    peak: this.audioAnalysis.peak,
+                    rms: this.audioAnalysis.rms,
+                    beat: isBeat,
                     time: performance.now()
                 });
                 
-                if (this.audioAnalysis.history.length > 30) {
+                // Keep only recent history
+                if (this.audioAnalysis.history.length > 60) { // 1 second at 60fps
                     this.audioAnalysis.history.shift();
+                }
+                
+                // Calculate energy trends
+                if (this.audioAnalysis.history.length > 10) {
+                    const recent = this.audioAnalysis.history.slice(-10);
+                    const older = this.audioAnalysis.history.slice(-20, -10);
+                    
+                    const recentAvg = recent.reduce((sum, h) => sum + h.rms, 0) / recent.length;
+                    const olderAvg = older.length > 0 ? older.reduce((sum, h) => sum + h.rms, 0) / older.length : recentAvg;
+                    
+                    this.audioAnalysis.energyTrend = recentAvg - olderAvg;
                 }
                 
                 return this.audioAnalysis;
@@ -1064,18 +1156,13 @@
                             this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
                             this.camera.position.set(0, 0, 8);
                             break;
-                        case 'kaleidoscope':
-                            this.currentVisualizer = new EnhancedKaleidoscopeVisualizer(this.scene, colors, this.performanceLevel);
-                            this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-                            this.camera.position.set(0, 0, 8);
-                            break;
                         case 'tunnel':
                             this.currentVisualizer = new EnhancedTunnelVisualizer(this.scene, colors, this.performanceLevel);
                             this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
                             this.camera.position.set(0, 0, 8);
                             break;
-                        case 'edm-lightshow':
-                            this.currentVisualizer = new EDMLightshowVisualizer(this.scene, colors, this.performanceLevel);
+                        case 'cosmic-spheres':
+                            this.currentVisualizer = new CosmicSpheresVisualizer(this.scene, colors, this.performanceLevel);
                             this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
                             this.camera.position.set(0, 0, 8);
                             break;
@@ -1129,13 +1216,34 @@
 
                 const frameStart = performance.now();
 
+                // Dynamic performance adjustment
+                const targetFPS = 60;
+                const currentFPS = 1000 / (frameStart - this.lastFpsTime);
+                if (this.fpsCounter % 60 === 0) { // Adjust every 60 frames
+                    if (currentFPS < 30 && this.performanceLevel === 'high') {
+                        this.performanceLevel = 'medium';
+                        console.log('Performance adjusted to medium');
+                    } else if (currentFPS < 20 && this.performanceLevel === 'medium') {
+                        this.performanceLevel = 'low';
+                        console.log('Performance adjusted to low');
+                    } else if (currentFPS > 50 && this.performanceLevel === 'low') {
+                        this.performanceLevel = 'medium';
+                        console.log('Performance adjusted to medium');
+                    } else if (currentFPS > 55 && this.performanceLevel === 'medium') {
+                        this.performanceLevel = 'high';
+                        console.log('Performance adjusted to high');
+                    }
+                }
+
+                // FPS tracking
                 this.fpsCounter++;
                 if (frameStart - this.lastFpsTime >= 1000) {
-                    document.getElementById('fps-counter').textContent = this.fpsCounter;
+                    document.getElementById('fps-counter').textContent = Math.round(this.fpsCounter);
                     this.fpsCounter = 0;
                     this.lastFpsTime = frameStart;
                 }
 
+                // Enhanced audio analysis
                 let audioData = null;
                 if (this.isCapturing && this.analyser) {
                     this.analyser.getByteFrequencyData(this.dataArray);
@@ -1144,11 +1252,72 @@
 
                 const analysis = this.analyzeAudio(audioData);
 
+                // Beat-reactive background flash
+                if (analysis.beat && this.settings.backgroundMode !== 'dark') {
+                    const flash = Math.min(analysis.rms * 0.5, 0.3);
+                    document.body.style.filter = `brightness(${1 + flash})`;
+                    setTimeout(() => {
+                        document.body.style.filter = 'brightness(1)';
+                    }, 100);
+                }
+
+                // Dynamic camera effects for certain modes
+                if (this.camera && this.currentVisualizer) {
+                    const visualizerMode = this.settings.visualizerMode;
+                    
+                    if (visualizerMode === 'edm-lightshow' && analysis.beat) {
+                        // Camera shake on beat
+                        const shakeIntensity = analysis.rms * 0.2;
+                        this.camera.position.x += (Math.random() - 0.5) * shakeIntensity;
+                        this.camera.position.y += (Math.random() - 0.5) * shakeIntensity;
+                    } else if (visualizerMode === 'tunnel') {
+                        // Slight camera movement in tunnel
+                        const sway = Math.sin(frameStart * 0.001) * analysis.average * 0.5;
+                        this.camera.position.x = sway + this.settings.center * 2;
+                        this.camera.position.y = Math.cos(frameStart * 0.0008) * analysis.mid * 0.3;
+                    } else if (visualizerMode === 'dmt' || visualizerMode === 'psychedelic') {
+                        // Subtle zoom pulsing for shader modes
+                        if (this.camera instanceof THREE.OrthographicCamera) {
+                            const zoomPulse = 1 + analysis.rms * 0.1;
+                            this.camera.zoom = zoomPulse;
+                            this.camera.updateProjectionMatrix();
+                        }
+                    }
+                }
+
+                // Update visualizer with enhanced analysis
                 if (this.currentVisualizer && this.currentVisualizer.update) {
+                    // Add spectrum data to analysis for advanced visualizers
+                    analysis.spectrum = this.spectrumAnalyzer.bandData;
+                    analysis.energyTrend = this.audioAnalysis.energyTrend || 0;
+                    
                     this.currentVisualizer.update(audioData, this.settings, analysis);
                 }
 
-                this.renderer.render(this.scene, this.camera);
+                // Adaptive rendering quality
+                if (this.renderer) {
+                    // Reduce pixel ratio if performance is poor
+                    const targetPixelRatio = this.performanceLevel === 'high' ? 
+                        Math.min(window.devicePixelRatio, 2) : 
+                        this.performanceLevel === 'medium' ? 1.5 : 1;
+                    
+                    if (Math.abs(this.renderer.getPixelRatio() - targetPixelRatio) > 0.1) {
+                        this.renderer.setPixelRatio(targetPixelRatio);
+                    }
+                    
+                    this.renderer.render(this.scene, this.camera);
+                }
+
+                // Update performance indicator
+                const frameEnd = performance.now();
+                const frameTime = frameEnd - frameStart;
+                if (frameTime > 20) { // Frame took longer than 50fps
+                    document.getElementById('quality-level').style.color = '#ff6666';
+                } else if (frameTime > 16.67) { // Frame took longer than 60fps
+                    document.getElementById('quality-level').style.color = '#ffaa66';
+                } else {
+                    document.getElementById('quality-level').style.color = '#66ff66';
+                }
             }
 
             onWindowResize() {
@@ -1274,77 +1443,100 @@
             }
         }
 
-        // Fixed Enhanced Neural Visualizer
+        // Ultra-Enhanced Neural Network Visualizer
         class EnhancedNeuralVisualizer {
             constructor(scene, colors, performance) {
                 this.scene = scene;
                 this.colors = colors;
+                this.performance = performance;
                 this.nodes = [];
                 this.connections = [];
+                this.dataFlows = [];
+                this.neuralPulses = [];
                 this.time = 0;
-                this.createNetwork();
+                this.createAdvancedNetwork();
             }
 
-            createNetwork() {
-                // Optimized layer configuration for better visual appeal and performance
-                const layers = this.performance === 'high' ? [8, 12, 16, 12, 8] :
-                              this.performance === 'medium' ? [6, 10, 14, 10, 6] : [5, 8, 10, 8, 5];
-                const layerSpacing = 3.2;
+            createAdvancedNetwork() {
+                // More complex network architecture for stunning visuals
+                const layers = this.performance === 'high' ? [12, 16, 20, 24, 20, 16, 12] :
+                              this.performance === 'medium' ? [10, 14, 18, 20, 18, 14, 10] : [8, 12, 16, 18, 16, 12, 8];
+                const layerSpacing = 2.8;
                 let nodeId = 0;
 
-                // Create nodes with enhanced visual properties
+                // Create nodes with enhanced visual complexity
                 layers.forEach((nodeCount, layerIndex) => {
-                    const startY = -(nodeCount - 1) * 0.6;
+                    const startY = -(nodeCount - 1) * 0.5;
                     const xPos = (layerIndex - (layers.length - 1) / 2) * layerSpacing;
                     
                     for (let i = 0; i < nodeCount; i++) {
-                        // Optimized geometry for 120+ FPS
-                        const geometry = new THREE.SphereGeometry(0.12, 8, 6);
+                        // Enhanced node geometry with more detail
+                        const geometry = new THREE.IcosahedronGeometry(0.08, 1);
                         const material = new THREE.MeshBasicMaterial({
                             color: this.colors.primary,
                             transparent: true,
-                            opacity: 0.9
+                            opacity: 0.9,
+                            blending: THREE.AdditiveBlending
                         });
 
                         const node = new THREE.Mesh(geometry, material);
-                        node.position.set(xPos, startY + i * 1.2, 0);
+                        node.position.set(xPos, startY + i * 1.0, 0);
+                        
+                        // Add glow ring around each node
+                        const ringGeometry = new THREE.RingGeometry(0.12, 0.16, 8);
+                        const ringMaterial = new THREE.MeshBasicMaterial({
+                            color: this.colors.accent,
+                            transparent: true,
+                            opacity: 0.6,
+                            side: THREE.DoubleSide,
+                            blending: THREE.AdditiveBlending
+                        });
+                        const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+                        ring.position.copy(node.position);
+                        ring.lookAt(0, 0, 1);
+                        
                         node.userData = {
                             id: nodeId++,
                             layer: layerIndex,
                             activation: 0,
-                            baseSize: 0.12,
-                            basePosition: new THREE.Vector3(xPos, startY + i * 1.2, 0),
-                            pulseOffset: Math.random() * Math.PI * 2
+                            baseSize: 0.08,
+                            basePosition: new THREE.Vector3(xPos, startY + i * 1.0, 0),
+                            pulseOffset: Math.random() * Math.PI * 2,
+                            ring: ring,
+                            nodeIndex: i
                         };
                         
                         this.nodes.push(node);
                         this.scene.add(node);
+                        this.scene.add(ring);
                     }
                 });
 
-                // Create comprehensive connections ensuring ALL layers connect properly
+                // Create comprehensive connections ensuring ALL layers are connected
                 for (let l = 0; l < layers.length - 1; l++) {
                     const currentLayer = this.nodes.filter(n => n.userData.layer === l);
                     const nextLayer = this.nodes.filter(n => n.userData.layer === l + 1);
                     
-                    // Ensure EVERY layer connects to the next - no gaps
+                    console.log(`Connecting layer ${l} (${currentLayer.length} nodes) to layer ${l+1} (${nextLayer.length} nodes)`);
+                    
                     currentLayer.forEach((node1, i) => {
                         nextLayer.forEach((node2, j) => {
-                            // Enhanced connection strategy - more connections for better visuals
+                            // Ensure good coverage across all layers
                             let shouldConnect = false;
                             
                             if (this.performance === 'high') {
-                                // High performance: Connect most nodes (80% of connections)
-                                shouldConnect = (i + j) % 5 !== 4; // Skip only every 5th connection
+                                // High performance: Connect 75% of possible connections
+                                shouldConnect = (i + j + l) % 4 !== 3;
                             } else if (this.performance === 'medium') {
-                                // Medium performance: Connect 60% of nodes
-                                shouldConnect = (i + j) % 3 !== 2; // Skip every 3rd connection
+                                // Medium performance: Connect 60% of possible connections
+                                shouldConnect = (i + j + l) % 5 !== 4;
                             } else {
-                                // Low performance: Connect 50% but ensure coverage
-                                shouldConnect = (i + j) % 2 === 0 || Math.abs(i - j) <= 1;
+                                // Low performance: Connect 50% but ensure good distribution
+                                shouldConnect = (i + j + l) % 2 === 0 || Math.abs(i - j) <= 1;
                             }
                             
                             if (shouldConnect) {
+                                // Create connection line
                                 const geometry = new THREE.BufferGeometry();
                                 const positions = new Float32Array([
                                     node1.position.x, node1.position.y, node1.position.z,
@@ -1355,38 +1547,63 @@
                                 const material = new THREE.LineBasicMaterial({
                                     color: this.colors.secondary,
                                     transparent: true,
-                                    opacity: 0.4, // Increased base opacity for visibility
-                                    linewidth: 2
+                                    opacity: 0.4, // Increased base opacity
+                                    blending: THREE.AdditiveBlending
                                 });
                                 
                                 const line = new THREE.Line(geometry, material);
                                 line.userData = {
                                     node1,
                                     node2,
-                                    strength: 0.3 + Math.random() * 0.7,
+                                    strength: 0.5 + Math.random() * 0.5,
                                     positions: positions,
                                     layerConnection: l,
-                                    baseOpacity: 0.4
+                                    baseOpacity: 0.4,
+                                    fromLayer: l,
+                                    toLayer: l + 1
                                 };
+                                
                                 this.connections.push(line);
                                 this.scene.add(line);
+                                
+                                // Add data flow particles for visual feedback
+                                if (this.performance !== 'low' && Math.random() < 0.4) {
+                                    const flowGeometry = new THREE.SphereGeometry(0.025, 4, 4);
+                                    const flowMaterial = new THREE.MeshBasicMaterial({
+                                        color: this.colors.accent,
+                                        transparent: true,
+                                        opacity: 0.9,
+                                        blending: THREE.AdditiveBlending
+                                    });
+                                    
+                                    const flowParticle = new THREE.Mesh(flowGeometry, flowMaterial);
+                                    flowParticle.userData = {
+                                        connection: line,
+                                        progress: Math.random(),
+                                        speed: 0.015 + Math.random() * 0.025,
+                                        active: false,
+                                        fromLayer: l,
+                                        toLayer: l + 1
+                                    };
+                                    
+                                    this.dataFlows.push(flowParticle);
+                                    this.scene.add(flowParticle);
+                                }
                             }
                         });
                     });
                 }
 
-                // Add enhanced long-range connections for all performance levels
+                // Add some long-range connections to ensure network spans fully
                 for (let l = 0; l < layers.length - 2; l++) {
                     const currentLayer = this.nodes.filter(n => n.userData.layer === l);
                     const targetLayer = this.nodes.filter(n => n.userData.layer === l + 2);
                     
                     // Add strategic long-range connections
                     currentLayer.forEach((node1, i) => {
-                        const connectionChance = this.performance === 'high' ? 0.4 :
-                                               this.performance === 'medium' ? 0.3 : 0.2;
-                        
-                        if (Math.random() < connectionChance && i < targetLayer.length) {
-                            const node2 = targetLayer[Math.min(i, targetLayer.length - 1)];
+                        if (i < targetLayer.length && Math.random() < 0.3) {
+                            const node2 = targetLayer[i];
+                            
                             const geometry = new THREE.BufferGeometry();
                             const positions = new Float32Array([
                                 node1.position.x, node1.position.y, node1.position.z,
@@ -1397,110 +1614,168 @@
                             const material = new THREE.LineBasicMaterial({
                                 color: this.colors.accent,
                                 transparent: true,
-                                opacity: 0.25
+                                opacity: 0.25,
+                                blending: THREE.AdditiveBlending
                             });
                             
                             const line = new THREE.Line(geometry, material);
                             line.userData = {
                                 node1,
                                 node2,
-                                strength: Math.random() * 0.8,
+                                strength: Math.random() * 0.7,
                                 positions: positions,
                                 layerConnection: -1, // Mark as long-range
-                                baseOpacity: 0.25
+                                baseOpacity: 0.25,
+                                fromLayer: l,
+                                toLayer: l + 2
                             };
+                            
                             this.connections.push(line);
                             this.scene.add(line);
                         }
                     });
                 }
 
-                // Enhanced lighting for better node visibility
-                const ambientLight = new THREE.AmbientLight(0x404040, 0.8);
+                console.log(`Created ${this.connections.length} total connections across ${layers.length} layers`);
+
+                // Add neural pulse effects
+                if (this.performance === 'high') {
+                    for (let i = 0; i < 20; i++) {
+                        const pulseGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+                        const pulseMaterial = new THREE.MeshBasicMaterial({
+                            color: this.colors.primary,
+                            transparent: true,
+                            opacity: 0,
+                            blending: THREE.AdditiveBlending
+                        });
+                        
+                        const pulse = new THREE.Mesh(pulseGeometry, pulseMaterial);
+                        pulse.userData = {
+                            active: false,
+                            startTime: 0,
+                            duration: 1000, // ms
+                            startNode: null,
+                            targetNode: null
+                        };
+                        
+                        this.neuralPulses.push(pulse);
+                        this.scene.add(pulse);
+                    }
+                }
+
+                // Enhanced lighting for neural network
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
                 this.scene.add(ambientLight);
                 
-                // Add point light for better depth perception
-                const pointLight = new THREE.PointLight(this.colors.primary, 1.5, 50);
-                pointLight.position.set(0, 0, 15);
-                this.scene.add(pointLight);
-                this.pointLight = pointLight;
+                // Multiple dynamic point lights
+                for (let i = 0; i < 3; i++) {
+                    const pointLight = new THREE.PointLight(this.colors.primary, 0.8, 25);
+                    pointLight.position.set(
+                        (i - 1) * 6,
+                        Math.sin(i * 2) * 4,
+                        10
+                    );
+                    pointLight.userData = {
+                        index: i,
+                        baseIntensity: 0.8
+                    };
+                    this.scene.add(pointLight);
+                    if (i === 0) this.pointLight = pointLight;
+                }
             }
 
             update(audioData, settings, analysis) {
                 if (!audioData) {
                     const time = Date.now() * 0.001;
-                    audioData = new Uint8Array(1024); // Increased for better frequency resolution
+                    audioData = new Uint8Array(1024);
                     for (let i = 0; i < audioData.length; i++) {
                         audioData[i] = Math.sin(time + i * 0.02) * 80 + 140;
                     }
                 }
 
                 this.time += 0.016 * settings.speed;
-
-                // Enhanced node updates with better audio mapping
                 const nodeCount = this.nodes.length;
                 const audioLength = audioData?.length || 1024;
                 
+                // Static neural network with audio flow visualization
                 for (let i = 0; i < nodeCount; i++) {
                     const node = this.nodes[i];
                     const layer = node.userData.layer;
                     
-                    // Map different layers to different frequency ranges
+                    // Map different layers to different frequency ranges for realistic neural flow
                     let freqIndex;
+                    const layerCount = Math.max(...this.nodes.map(n => n.userData.layer)) + 1;
                     if (layer === 0) {
-                        // Input layer - use bass frequencies
-                        freqIndex = Math.floor((i / this.nodes.filter(n => n.userData.layer === 0).length) * (audioLength * 0.2));
-                    } else if (layer === 4) {
-                        // Output layer - use treble frequencies
-                        freqIndex = Math.floor(audioLength * 0.7 + (i / this.nodes.filter(n => n.userData.layer === 4).length) * (audioLength * 0.3));
+                        // Input layer - bass frequencies
+                        freqIndex = Math.floor((node.userData.nodeIndex / 12) * (audioLength * 0.25));
+                    } else if (layer === layerCount - 1) {
+                        // Output layer - treble frequencies
+                        freqIndex = Math.floor(audioLength * 0.75 + (node.userData.nodeIndex / 12) * (audioLength * 0.25));
                     } else {
-                        // Hidden layers - use mid frequencies
-                        freqIndex = Math.floor(audioLength * 0.2 + (i / nodeCount) * (audioLength * 0.5));
+                        // Hidden layers - mid frequencies
+                        const layerRatio = (layer - 1) / Math.max(layerCount - 3, 1);
+                        freqIndex = Math.floor(audioLength * 0.25 + layerRatio * (audioLength * 0.5));
                     }
                     
-                    const rawActivation = audioData ? (audioData[freqIndex] / 255) : 0.3;
+                    const rawActivation = audioData ? (audioData[freqIndex] / 255) : 0.2;
                     const activation = rawActivation * settings.sensitivity;
                     node.userData.activation = activation;
                     
-                    // Enhanced scaling with layer-specific multipliers
-                    const layerMultiplier = layer === 0 || layer === 4 ? 1.3 : 1.0; // Input/output layers more prominent
-                    const scale = Math.min((1 + activation * settings.intensity * 2.5 * layerMultiplier) * settings.zoom, 3.5);
-                    node.scale.setScalar(scale);
+                    // Subtle scaling - no dramatic pulsing
+                    const baseScale = 1.0;
+                    const audioScale = baseScale + activation * settings.intensity * 0.8;
+                    node.scale.setScalar(Math.min(audioScale * settings.zoom, 2.0));
                     
-                    // Enhanced pulsing effect
-                    const pulseIntensity = Math.sin(this.time * 4 + node.userData.pulseOffset) * 0.3 + 0.7;
-                    const finalScale = scale * (0.8 + activation * 0.4 * pulseIntensity);
-                    node.scale.setScalar(finalScale);
+                    // Static color with subtle brightness changes
+                    const baseHue = layer * 0.15; // Different hue per layer
+                    const hue = (baseHue + activation * settings.colorshift * 0.3) % 1;
+                    const saturation = 0.8;
+                    const lightness = 0.4 + activation * 0.4; // Brightness responds to audio
+                    node.material.color.setHSL(hue, saturation, lightness);
+                    node.material.opacity = (0.9 + activation * 0.1) * settings.contrast;
                     
-                    // More frequent and vibrant color updates
-                    if (i % 2 === 0) { // Update colors every other frame for better reactivity
-                        const baseHue = layer * 0.15; // Different base hue per layer
-                        const hue = (baseHue + activation * settings.colorshift + this.time * 0.12) % 1;
-                        const saturation = 0.9 + activation * 0.1;
-                        const lightness = 0.4 + activation * 0.5 + pulseIntensity * 0.2;
-                        node.material.color.setHSL(hue, saturation, lightness);
-                        node.material.opacity = 0.8 + activation * 0.2;
-                    }
+                    // Ring effects - subtle
+                    const ring = node.userData.ring;
+                    ring.scale.setScalar(audioScale * 1.2 * settings.zoom);
+                    ring.material.color.setHSL(hue, 0.7, 0.5 + activation * 0.3);
+                    ring.material.opacity = (0.3 + activation * 0.4) * settings.contrast;
                     
-                    // Keep nodes in their original positions (static)
+                    // Keep nodes in static positions
                     node.position.copy(node.userData.basePosition);
                 }
 
-                // Enhanced connection updates with much better visibility and reactivity
-                const connectionCount = this.connections.length;
-                for (let i = 0; i < connectionCount; i++) {
-                    const connection = this.connections[i];
+                // Static connections that only brighten with audio - NO PULSING
+                this.connections.forEach((connection, index) => {
                     const node1 = connection.userData.node1;
                     const node2 = connection.userData.node2;
-                    const strength = (node1.userData.activation + node2.userData.activation) * 0.5;
-                    const baseOpacity = connection.userData.baseOpacity || 0.4;
+                    const fromLayer = connection.userData.fromLayer;
+                    const toLayer = connection.userData.toLayer;
                     
-                    // Much more visible and reactive connections
-                    const pulseEffect = Math.sin(this.time * 6 + i * 0.1) * 0.3 + 0.7;
-                    const finalOpacity = Math.min(baseOpacity + strength * 2.5 * pulseEffect, 1.0);
+                    // Calculate activation based on both connected nodes
+                    const node1Activation = node1.userData.activation || 0;
+                    const node2Activation = node2.userData.activation || 0;
+                    const avgActivation = (node1Activation + node2Activation) * 0.5;
+                    
+                    // Static base opacity - no time-based changes
+                    const layerDepth = Math.max(fromLayer || 0, toLayer || 0);
+                    const baseOpacity = 0.3 + (layerDepth / 7) * 0.1; // Deeper layers slightly more visible
+                    
+                    // Audio boost calculation - ONLY audio, no time component
+                    const layerMultiplier = (fromLayer === 0 || toLayer === 6) ? 1.5 : 1.0;
+                    const audioBoost = avgActivation * settings.intensity * 1.8 * layerMultiplier;
+                    const finalOpacity = Math.min(baseOpacity + audioBoost, 1.0) * settings.contrast;
+                    
                     connection.material.opacity = finalOpacity;
                     
-                    // Update connection positions to ensure they span the full network
+                    // Static color with ONLY audio influence - removed time component
+                    const layerHue = ((fromLayer || 0) + (toLayer || 0)) * 0.08;
+                    const audioHue = avgActivation * settings.colorshift * 0.4;
+                    const hue = (layerHue + audioHue) % 1; // NO TIME COMPONENT
+                    const saturation = 0.8;
+                    const lightness = 0.5 + avgActivation * 0.4; // Only audio affects brightness
+                    connection.material.color.setHSL(hue, saturation, lightness);
+                    
+                    // Update positions to ensure connections span properly
                     const positions = connection.userData.positions;
                     positions[0] = node1.position.x;
                     positions[1] = node1.position.y;
@@ -1508,335 +1783,297 @@
                     positions[3] = node2.position.x;
                     positions[4] = node2.position.y;
                     positions[5] = node2.position.z;
-                    
                     connection.geometry.attributes.position.needsUpdate = true;
-                    
-                    // More frequent and dynamic color updates for connections
-                    if (i % 3 === 0) { // Update colors every 3rd frame
-                        const layerHue = (node1.userData.layer + node2.userData.layer) * 0.1;
-                        const hue = (layerHue + strength * settings.colorshift + this.time * 0.08) % 1;
-                        const saturation = 0.8 + strength * 0.2;
-                        const lightness = 0.5 + strength * 0.4;
-                        connection.material.color.setHSL(hue, saturation, lightness);
-                    }
-                }
+                });
 
-                // Update point light for better depth perception
+                // Enhanced data flow particles - these show the audio "traveling" through the network
+                this.dataFlows.forEach((flow, index) => {
+                    const connection = flow.userData.connection;
+                    const node1 = connection.userData.node1;
+                    const node2 = connection.userData.node2;
+                    const avgActivation = (node1.userData.activation + node2.userData.activation) * 0.5;
+                    
+                    // Only activate flow when there's significant audio activity
+                    flow.userData.active = avgActivation > 0.4;
+                    
+                    if (flow.userData.active) {
+                        // Flow speed based on audio intensity
+                        const flowSpeed = flow.userData.speed * settings.speed * (1 + avgActivation * 2);
+                        flow.userData.progress += flowSpeed;
+                        if (flow.userData.progress > 1) flow.userData.progress = 0;
+                        
+                        // Move along connection path
+                        const t = flow.userData.progress;
+                        flow.position.lerpVectors(node1.position, node2.position, t);
+                        
+                        // Visual effects for data flow
+                        const scale = (1.5 + avgActivation * 2) * settings.zoom;
+                        flow.scale.setScalar(scale);
+                        
+                        // Bright, distinct color for data flow
+                        const hue = (avgActivation * settings.colorshift + this.time * 0.2 + index * 0.1) % 1;
+                        flow.material.color.setHSL(hue, 1.0, 0.9);
+                        flow.material.opacity = (0.8 + avgActivation * 0.2) * settings.contrast;
+                    } else {
+                        flow.material.opacity = 0;
+                    }
+                });
+
+                // Neural pulse system - only for major audio events
+                this.neuralPulses.forEach(pulse => {
+                    if (!pulse.userData.active && analysis.peak > 0.7) {
+                        // Trigger pulse only on strong audio peaks
+                        const highActivityNodes = this.nodes.filter(n => n.userData.activation > 0.6);
+                        if (highActivityNodes.length > 1) {
+                            pulse.userData.active = true;
+                            pulse.userData.startTime = this.time;
+                            pulse.userData.startNode = highActivityNodes[0]; // Start from first layer
+                            pulse.userData.targetNode = highActivityNodes[highActivityNodes.length - 1]; // End at last layer
+                        }
+                    }
+                    
+                    if (pulse.userData.active) {
+                        const elapsed = this.time - pulse.userData.startTime;
+                        const progress = Math.min(elapsed / (pulse.userData.duration / 1000), 1);
+                        
+                        if (progress >= 1) {
+                            pulse.userData.active = false;
+                            pulse.material.opacity = 0;
+                        } else {
+                            // Animate pulse across the network
+                            pulse.position.lerpVectors(
+                                pulse.userData.startNode.position,
+                                pulse.userData.targetNode.position,
+                                progress
+                            );
+                            
+                            // Pulse visual effects
+                            const intensity = Math.sin(progress * Math.PI) * (2 + analysis.peak * 3);
+                            pulse.scale.setScalar(intensity * settings.zoom);
+                            pulse.material.opacity = intensity * 0.9 * settings.contrast;
+                            
+                            const hue = (progress * 0.5 + this.time * 0.1) % 1;
+                            pulse.material.color.setHSL(hue, 1.0, 0.8);
+                        }
+                    }
+                });
+
+                // Static lighting - no movement
                 if (this.pointLight) {
-                    const lightIntensity = 1.5 + analysis.average * 2 * settings.contrast;
+                    const lightIntensity = (1.2 + analysis.average * 2) * settings.contrast;
                     this.pointLight.intensity = lightIntensity;
                     
-                    const lightHue = (analysis.peak * settings.colorshift + this.time * 0.1) % 1;
-                    this.pointLight.color.setHSL(lightHue, 0.8, 0.6);
+                    const lightHue = (analysis.average * settings.colorshift + this.time * 0.03) % 1;
+                    this.pointLight.color.setHSL(lightHue, 0.7, 0.6);
                 }
             }
 
             updateColors(colors) {
                 this.colors = colors;
+                
+                // Update nodes
                 this.nodes.forEach(node => {
                     node.material.color.setHex(colors.primary);
-                    node.material.emissive.setHex(colors.primary);
+                    if (node.userData.ring) {
+                        node.userData.ring.material.color.setHex(colors.accent);
+                    }
                 });
+                
+                // Update connections
                 this.connections.forEach(connection => {
                     connection.material.color.setHex(colors.secondary);
                 });
-                if (this.pointLight) {
-                    this.pointLight.color.setHex(colors.accent);
-                }
-            }
-
-            dispose() {
-                this.nodes.forEach(node => {
-                    this.scene.remove(node);
-                    node.geometry.dispose();
-                    node.material.dispose();
+                
+                // Update data flows
+                this.dataFlows.forEach(flow => {
+                    flow.material.color.setHex(colors.accent);
                 });
-                this.connections.forEach(connection => {
-                    this.scene.remove(connection);
-                    connection.geometry.dispose();
-                    connection.material.dispose();
+                
+                // Update neural pulses
+                this.neuralPulses.forEach(pulse => {
+                    pulse.material.color.setHex(colors.primary);
                 });
-                this.nodes = [];
-                this.connections = [];
-            }
-        }
-
-        // Fixed Enhanced Kaleidoscope Visualizer
-        class EnhancedKaleidoscopeVisualizer {
-            constructor(scene, colors, performance) {
-                this.scene = scene;
-                this.colors = colors;
-                this.performance = performance;
-                this.segments = [];
-                this.mirrors = [];
-                this.time = 0;
-                this.createKaleidoscope();
-            }
-
-            createKaleidoscope() {
-                const segmentCount = 12;
-                const particlesPerSegment = this.performance === 'high' ? 20 : this.performance === 'medium' ? 15 : 10;
-
-                for (let segment = 0; segment < segmentCount; segment++) {
-                    const segmentGroup = new THREE.Group();
-                    
-                    for (let p = 0; p < particlesPerSegment; p++) {
-                        const geometry = new THREE.OctahedronGeometry(0.1 + Math.random() * 0.15);
-                        const material = new THREE.MeshPhongMaterial({
-                            color: this.colors.primary,
-                            emissive: this.colors.primary,
-                            emissiveIntensity: 0.8,
-                            transparent: true,
-                            opacity: 0.8
-                        });
-                        
-                        const particle = new THREE.Mesh(geometry, material);
-                        
-                        // Position particles in a pattern
-                        const angle = (p / particlesPerSegment) * Math.PI * 2;
-                        const radius = 1 + Math.random() * 3;
-                        particle.position.set(
-                            Math.cos(angle) * radius,
-                            Math.sin(angle) * radius,
-                            (Math.random() - 0.5) * 2
-                        );
-                        
-                        particle.userData = {
-                            basePosition: particle.position.clone(),
-                            rotSpeed: {
-                                x: 0.01 + Math.random() * 0.02,
-                                y: 0.01 + Math.random() * 0.02,
-                                z: 0.01 + Math.random() * 0.02
-                            },
-                            originalAngle: angle,
-                            originalRadius: radius,
-                            pulseOffset: Math.random() * Math.PI * 2
-                        };
-                        
-                        segmentGroup.add(particle);
-                    }
-                    
-                    // Position each segment around a circle
-                    const segmentAngle = (segment / segmentCount) * Math.PI * 2;
-                    segmentGroup.rotation.z = segmentAngle;
-                    
-                    this.segments.push(segmentGroup);
-                    this.scene.add(segmentGroup);
-                }
-
-                // Add mirror planes for true kaleidoscope effect
-                for (let m = 0; m < 6; m++) {
-                    const mirrorGeometry = new THREE.PlaneGeometry(10, 10);
-                    const mirrorMaterial = new THREE.MeshPhongMaterial({
-                        color: this.colors.accent,
-                        transparent: true,
-                        opacity: 0.1,
-                        side: THREE.DoubleSide
-                    });
-                    
-                    const mirror = new THREE.Mesh(mirrorGeometry, mirrorMaterial);
-                    const mirrorAngle = (m / 6) * Math.PI * 2;
-                    mirror.rotation.z = mirrorAngle;
-                    mirror.position.x = Math.cos(mirrorAngle) * 5;
-                    mirror.position.y = Math.sin(mirrorAngle) * 5;
-                    
-                    this.mirrors.push(mirror);
-                    this.scene.add(mirror);
-                }
-
-                const ambientLight = new THREE.AmbientLight(0x404040, 0.7);
-                this.scene.add(ambientLight);
-
-                const pointLight = new THREE.PointLight(this.colors.primary, 2, 50);
-                pointLight.position.set(0, 0, 10);
-                this.scene.add(pointLight);
-                this.pointLight = pointLight;
-            }
-
-            update(audioData, settings, analysis) {
-                if (!audioData) {
-                    const time = Date.now() * 0.001;
-                    audioData = new Uint8Array(1024);
-                    for (let i = 0; i < audioData.length; i++) {
-                        audioData[i] = Math.sin(time + i * 0.02) * 60 + 120;
-                    }
-                }
-
-                this.time += 0.016 * settings.speed;
-
-                this.segments.forEach((segment, segmentIndex) => {
-                    // Rotate the entire segment
-                    segment.rotation.z += 0.005 * settings.speed * settings.rotation;
-                    
-                    segment.children.forEach((particle, particleIndex) => {
-                        const freqIndex = Math.floor(((segmentIndex * segment.children.length + particleIndex) / (this.segments.length * segment.children.length)) * audioData.length);
-                        const amplitude = audioData[freqIndex] / 255;
-                        
-                        // Scale based on audio
-                        const scale = (1 + amplitude * settings.intensity * 3) * settings.zoom;
-                        particle.scale.setScalar(scale);
-                        
-                        // Update position with kaleidoscope effect
-                        const baseRadius = particle.userData.originalRadius;
-                        const pulseRadius = baseRadius + amplitude * settings.orbsize * 2;
-                        const angle = particle.userData.originalAngle + this.time * 0.2 * settings.rotation;
-                        
-                        particle.position.x = Math.cos(angle) * pulseRadius + settings.center;
-                        particle.position.y = Math.sin(angle) * pulseRadius;
-                        particle.position.z = Math.sin(this.time + particle.userData.pulseOffset) * amplitude * 2;
-                        
-                        // Rotate individual particles
-                        particle.rotation.x += particle.userData.rotSpeed.x * settings.speed;
-                        particle.rotation.y += particle.userData.rotSpeed.y * settings.speed;
-                        particle.rotation.z += particle.userData.rotSpeed.z * settings.speed;
-                        
-                        // Update material properties
-                        particle.material.emissiveIntensity = (0.8 + amplitude * 3) * settings.contrast;
-                        
-                        const hue = (amplitude * settings.colorshift + this.time * 0.1 + segmentIndex * 0.1) % 1;
-                        particle.material.color.setHSL(hue, 0.9, 0.6 + amplitude * 0.4);
-                        particle.material.emissive.setHSL(hue, 1.0, 0.5 + amplitude * 0.3);
-                    });
-                });
-
-                // Update mirrors
-                this.mirrors.forEach((mirror, index) => {
-                    mirror.rotation.z += 0.002 * settings.speed * settings.rotation;
-                    mirror.material.opacity = 0.05 + analysis.average * 0.2;
-                });
-            }
-
-            updateColors(colors) {
-                this.colors = colors;
-                this.segments.forEach(segment => {
-                    segment.children.forEach(particle => {
-                        particle.material.color.setHex(colors.primary);
-                        particle.material.emissive.setHex(colors.primary);
-                    });
-                });
-                this.mirrors.forEach(mirror => {
-                    mirror.material.color.setHex(colors.accent);
-                });
+                
                 if (this.pointLight) {
                     this.pointLight.color.setHex(colors.primary);
                 }
             }
 
             dispose() {
-                this.segments.forEach(segment => {
-                    segment.children.forEach(particle => {
-                        particle.geometry.dispose();
-                        particle.material.dispose();
-                    });
-                    this.scene.remove(segment);
+                // Dispose nodes and their rings
+                this.nodes.forEach(node => {
+                    this.scene.remove(node);
+                    node.geometry.dispose();
+                    node.material.dispose();
+                    
+                    if (node.userData.ring) {
+                        this.scene.remove(node.userData.ring);
+                        node.userData.ring.geometry.dispose();
+                        node.userData.ring.material.dispose();
+                    }
                 });
-                this.mirrors.forEach(mirror => {
-                    this.scene.remove(mirror);
-                    mirror.geometry.dispose();
-                    mirror.material.dispose();
+                
+                // Dispose connections
+                this.connections.forEach(connection => {
+                    this.scene.remove(connection);
+                    connection.geometry.dispose();
+                    connection.material.dispose();
                 });
-                this.segments = [];
-                this.mirrors = [];
+                
+                // Dispose data flows
+                this.dataFlows.forEach(flow => {
+                    this.scene.remove(flow);
+                    flow.geometry.dispose();
+                    flow.material.dispose();
+                });
+                
+                // Dispose neural pulses
+                this.neuralPulses.forEach(pulse => {
+                    this.scene.remove(pulse);
+                    pulse.geometry.dispose();
+                    pulse.material.dispose();
+                });
+                
+                this.nodes = [];
+                this.connections = [];
+                this.dataFlows = [];
+                this.neuralPulses = [];
             }
         }
 
-        // 3D Tunnel Visualizer - Proper tunnel with walls
+
+        // Enhanced Endless 3D Tunnel Visualizer
         class EnhancedTunnelVisualizer {
             constructor(scene, colors, performance) {
                 this.scene = scene;
                 this.colors = colors;
                 this.performance = performance;
-                this.tunnelSegments = [];
                 this.tunnelWalls = [];
+                this.tunnelRings = [];
+                this.particles = [];
                 this.time = 0;
-                this.createTunnel();
+                this.tunnelPosition = 0;
+                this.createEndlessTunnel();
             }
 
-            createTunnel() {
-                const segmentCount = this.performance === 'high' ? 40 : this.performance === 'medium' ? 30 : 20;
-                const segmentLength = 2.0;
+            createEndlessTunnel() {
+                const segmentCount = this.performance === 'high' ? 60 : this.performance === 'medium' ? 45 : 30;
+                const segmentSpacing = 1.5;
                 const tunnelRadius = 4.0;
-                const wallSegments = this.performance === 'high' ? 16 : this.performance === 'medium' ? 12 : 8;
+                const wallSegments = this.performance === 'high' ? 20 : this.performance === 'medium' ? 16 : 12;
                 
-                // Create tunnel segments with walls
+                // Create continuous tunnel walls without segments that reset
                 for (let i = 0; i < segmentCount; i++) {
-                    const segmentGroup = new THREE.Group();
-                    const zPosition = -i * segmentLength;
+                    const zPosition = -i * segmentSpacing;
                     
-                    // Create tunnel wall segments
+                    // Create tunnel wall ring
                     for (let j = 0; j < wallSegments; j++) {
                         const angle = (j / wallSegments) * Math.PI * 2;
-                        const nextAngle = ((j + 1) / wallSegments) * Math.PI * 2;
                         
-                        // Create wall segment geometry
-                        const geometry = new THREE.PlaneGeometry(
-                            tunnelRadius * Math.sin(Math.PI / wallSegments) * 2,
-                            segmentLength
-                        );
-                        
+                        // Create individual wall panels for seamless movement
+                        const geometry = new THREE.PlaneGeometry(0.8, segmentSpacing * 1.2);
                         const material = new THREE.MeshBasicMaterial({
                             color: this.colors.primary,
                             transparent: true,
-                            opacity: 0.6,
+                            opacity: 0.7,
                             side: THREE.DoubleSide,
-                            wireframe: false
+                            blending: THREE.AdditiveBlending
                         });
                         
-                        const wallSegment = new THREE.Mesh(geometry, material);
-                        
-                        // Position wall segment
+                        const wallPanel = new THREE.Mesh(geometry, material);
                         const x = Math.cos(angle) * tunnelRadius;
                         const y = Math.sin(angle) * tunnelRadius;
-                        wallSegment.position.set(x, y, zPosition);
-                        wallSegment.lookAt(0, 0, zPosition);
-                        wallSegment.rotateY(Math.PI / 2);
                         
-                        wallSegment.userData = {
-                            segmentIndex: i,
+                        wallPanel.position.set(x, y, zPosition);
+                        wallPanel.lookAt(x * 2, y * 2, zPosition);
+                        
+                        wallPanel.userData = {
                             wallIndex: j,
                             angle: angle,
-                            originalZ: zPosition,
-                            baseOpacity: 0.6
+                            baseZ: zPosition,
+                            segmentIndex: i,
+                            baseOpacity: 0.7
                         };
                         
-                        segmentGroup.add(wallSegment);
-                        this.tunnelWalls.push(wallSegment);
+                        this.tunnelWalls.push(wallPanel);
+                        this.scene.add(wallPanel);
                     }
                     
-                    // Add glowing ring at each segment for structure
-                    const ringGeometry = new THREE.RingGeometry(tunnelRadius * 0.9, tunnelRadius * 1.1, wallSegments);
+                    // Add wireframe rings for structure
+                    const ringGeometry = new THREE.RingGeometry(tunnelRadius * 0.95, tunnelRadius * 1.05, wallSegments);
                     const ringMaterial = new THREE.MeshBasicMaterial({
                         color: this.colors.accent,
                         transparent: true,
-                        opacity: 0.3,
-                        side: THREE.DoubleSide
+                        opacity: 0.4,
+                        side: THREE.DoubleSide,
+                        wireframe: true,
+                        blending: THREE.AdditiveBlending
                     });
                     
                     const ring = new THREE.Mesh(ringGeometry, ringMaterial);
                     ring.position.z = zPosition;
                     ring.userData = {
-                        segmentIndex: i,
-                        originalZ: zPosition,
-                        type: 'ring'
+                        baseZ: zPosition,
+                        segmentIndex: i
                     };
                     
-                    segmentGroup.add(ring);
-                    this.tunnelSegments.push(segmentGroup);
-                    this.scene.add(segmentGroup);
+                    this.tunnelRings.push(ring);
+                    this.scene.add(ring);
                 }
 
-                // Add atmospheric fog for depth
-                this.scene.fog = new THREE.Fog(0x000000, 5, segmentCount * segmentLength * 0.8);
+                // Add flowing particles for motion enhancement
+                const particleCount = this.performance === 'high' ? 200 : this.performance === 'medium' ? 150 : 100;
+                for (let i = 0; i < particleCount; i++) {
+                    const particleGeometry = new THREE.SphereGeometry(0.02, 4, 4);
+                    const particleMaterial = new THREE.MeshBasicMaterial({
+                        color: this.colors.accent,
+                        transparent: true,
+                        opacity: 0.8,
+                        blending: THREE.AdditiveBlending
+                    });
+                    
+                    const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+                    const angle = Math.random() * Math.PI * 2;
+                    const radius = 2 + Math.random() * 3;
+                    
+                    particle.position.set(
+                        Math.cos(angle) * radius,
+                        Math.sin(angle) * radius,
+                        -Math.random() * segmentCount * segmentSpacing
+                    );
+                    
+                    particle.userData = {
+                        speed: 0.5 + Math.random() * 2,
+                        angle: angle,
+                        radius: radius,
+                        baseZ: particle.position.z
+                    };
+                    
+                    this.particles.push(particle);
+                    this.scene.add(particle);
+                }
+
+                // Dynamic fog for depth
+                this.scene.fog = new THREE.Fog(0x000000, 8, segmentCount * segmentSpacing * 0.7);
                 
-                // Minimal lighting for tunnel effect
-                const ambientLight = new THREE.AmbientLight(0x222222, 0.3);
+                // Enhanced lighting setup
+                const ambientLight = new THREE.AmbientLight(0x222244, 0.4);
                 this.scene.add(ambientLight);
                 
-                // Point light that moves through tunnel
-                const pointLight = new THREE.PointLight(this.colors.primary, 2, 15);
-                pointLight.position.set(0, 0, 5);
-                this.scene.add(pointLight);
-                this.pointLight = pointLight;
+                // Multiple moving point lights
+                for (let i = 0; i < 3; i++) {
+                    const pointLight = new THREE.PointLight(this.colors.primary, 1.5, 12);
+                    pointLight.position.set(
+                        Math.cos(i * 2.1) * 2,
+                        Math.sin(i * 2.1) * 2,
+                        5 - i * 3
+                    );
+                    pointLight.userData = { index: i, baseIntensity: 1.5 };
+                    this.scene.add(pointLight);
+                    if (i === 0) this.pointLight = pointLight;
+                    if (i === 1) this.pointLight2 = pointLight;
+                    if (i === 2) this.pointLight3 = pointLight;
+                }
             }
 
             update(audioData, settings, analysis) {
@@ -1849,65 +2086,42 @@
                 }
 
                 this.time += 0.016 * settings.speed;
-                const tunnelSpeed = 0.3 * settings.speed;
+                const tunnelSpeed = (0.8 + analysis.bass * 1.2) * settings.speed;
+                this.tunnelPosition += tunnelSpeed * 0.1;
 
-                // Update tunnel segments - move them forward to create tunnel effect
-                this.tunnelSegments.forEach((segment, segmentIndex) => {
-                    // Move segment forward
-                    segment.position.z += tunnelSpeed;
-                    
-                    // Reset segment position when it passes the camera
-                    if (segment.position.z > 10) {
-                        segment.position.z = -this.tunnelSegments.length * 2.0;
-                    }
-                    
-                    // Audio-reactive effects on tunnel walls
-                    segment.children.forEach((child, childIndex) => {
-                        if (child.userData.type === 'ring') {
-                            // Update ring effects
-                            const freqIndex = Math.floor((segmentIndex / this.tunnelSegments.length) * audioData.length);
-                            const amplitude = audioData[freqIndex] / 255;
-                            
-                            child.material.opacity = (0.2 + amplitude * 0.6) * settings.contrast;
-                            
-                            const hue = (amplitude * settings.colorshift + this.time * 0.1 + segmentIndex * 0.05) % 1;
-                            child.material.color.setHSL(hue, 0.8, 0.5 + amplitude * 0.3);
-                            
-                            // Scale ring based on audio
-                            const scale = (1 + amplitude * settings.intensity * 0.5) * settings.zoom;
-                            child.scale.setScalar(scale);
-                        }
-                    });
-                });
-
-                // Update tunnel walls with enhanced audio reactivity
+                // Update tunnel walls for truly endless movement
                 this.tunnelWalls.forEach((wall, wallIndex) => {
                     const segmentIndex = wall.userData.segmentIndex;
                     const freqIndex = Math.floor((wallIndex / this.tunnelWalls.length) * audioData.length);
                     const amplitude = audioData[freqIndex] / 255;
                     
-                    // Enhanced audio-reactive opacity with pulsing
-                    const baseOpacity = wall.userData.baseOpacity;
-                    const pulseIntensity = Math.sin(this.time * 3 + wallIndex * 0.5) * 0.2 + 0.8;
-                    wall.material.opacity = (baseOpacity + amplitude * 0.6 * pulseIntensity) * settings.contrast;
+                    // Continuous Z position movement with proper cycling
+                    wall.position.z = wall.userData.baseZ + this.tunnelPosition;
                     
-                    // Dynamic color cycling with frequency-based hues
-                    const bassInfluence = analysis.bass * 0.4;
-                    const midInfluence = analysis.mid * 0.3;
-                    const trebleInfluence = analysis.treble * 0.3;
-                    const hue = (amplitude * settings.colorshift + bassInfluence + this.time * 0.08 + segmentIndex * 0.05 + wall.userData.wallIndex * 0.15) % 1;
-                    wall.material.color.setHSL(hue, 0.8 + amplitude * 0.2, 0.3 + amplitude * 0.5 + midInfluence * 0.3);
+                    // Seamless reset when wall passes camera
+                    const segmentCount = this.performance === 'high' ? 60 : this.performance === 'medium' ? 45 : 30;
+                    const totalTunnelLength = segmentCount * 1.5;
                     
-                    // Enhanced wall movement with audio-reactive distortion
+                    if (wall.position.z > 15) {
+                        wall.position.z -= totalTunnelLength;
+                        wall.userData.baseZ -= totalTunnelLength;
+                    }
+                    
+                    // Enhanced audio-reactive effects
+                    const pulseIntensity = Math.sin(this.time * 4 + wallIndex * 0.3) * 0.3 + 0.7;
+                    const audioReactivity = (analysis.bass * 0.4 + analysis.mid * 0.4 + analysis.treble * 0.2);
+                    wall.material.opacity = (wall.userData.baseOpacity + audioReactivity * 0.6 * pulseIntensity) * settings.contrast;
+                    
+                    // Dynamic radius modulation
                     const originalAngle = wall.userData.angle;
-                    const radiusVariation = 1 + amplitude * settings.orbsize * 0.4;
+                    const radiusVariation = 1 + amplitude * settings.orbsize * 0.6;
                     const tunnelRadius = 4.0 * radiusVariation * settings.zoom;
                     
                     // Add audio-reactive warping
                     const warpAmount = amplitude * settings.intensity * 0.5;
                     const angleOffset = this.time * settings.rotation * 0.15 + Math.sin(this.time * 2 + wallIndex * 0.3) * warpAmount;
                     
-                    const x = Math.cos(originalAngle + angleOffset) * tunnelRadius + settings.center * 3;
+                    const x = Math.cos(originalAngle + angleOffset) * tunnelRadius + settings.center * 4;
                     const y = Math.sin(originalAngle + angleOffset) * tunnelRadius;
                     
                     // Add subtle Z-axis movement for depth variation
@@ -1917,217 +2131,310 @@
                     wall.position.y = y;
                     wall.position.z += zOffset * 0.1;
                     
-                    // Scale walls based on audio for breathing effect
-                    const scaleVariation = 1 + amplitude * settings.intensity * 0.3;
-                    wall.scale.set(scaleVariation, scaleVariation, 1);
+                    // Advanced color cycling
+                    const colorPhase = amplitude * settings.colorshift + this.time * 0.15 + wallIndex * 0.05;
+                    const hue = (colorPhase + analysis.peak * 0.3) % 1;
+                    wall.material.color.setHSL(hue, 0.9, 0.4 + amplitude * 0.6);
+                    
+                    // Scale variation for breathing effect
+                    const scale = 1 + amplitude * settings.intensity * 0.4;
+                    wall.scale.set(scale, scale, 1);
                 });
 
-                // Enhanced point light with audio-reactive movement and effects
-                if (this.pointLight) {
-                    // Dynamic light movement through tunnel with audio influence
-                    const baseMovement = Math.sin(this.time * 0.8) * 4;
-                    const audioMovement = (analysis.bass * 2 + analysis.mid * 1.5) * settings.orbsize;
-                    this.pointLight.position.z = 5 + baseMovement + audioMovement;
+                // Update tunnel rings with seamless cycling
+                this.tunnelRings.forEach((ring, ringIndex) => {
+                    ring.position.z = ring.userData.baseZ + this.tunnelPosition;
                     
-                    // Audio-reactive side-to-side movement
-                    this.pointLight.position.x = Math.cos(this.time * 0.6) * analysis.treble * 2 * settings.orbsize + settings.center * 2;
-                    this.pointLight.position.y = Math.sin(this.time * 0.4) * analysis.mid * 1.5 * settings.orbsize;
+                    const segmentCount = this.performance === 'high' ? 60 : this.performance === 'medium' ? 45 : 30;
+                    const totalTunnelLength = segmentCount * 1.5;
                     
-                    // Dynamic intensity based on multiple audio frequencies
-                    const bassBoost = analysis.bass * 4;
-                    const midBoost = analysis.mid * 2;
-                    const trebleBoost = analysis.treble * 1.5;
-                    this.pointLight.intensity = (3 + bassBoost + midBoost + trebleBoost) * settings.contrast;
+                    if (ring.position.z > 15) {
+                        ring.position.z -= totalTunnelLength;
+                        ring.userData.baseZ -= totalTunnelLength;
+                    }
                     
-                    // Enhanced color cycling with frequency separation
-                    const colorPhase = this.time * settings.colorshift * 0.3;
-                    const bassHue = (analysis.bass * 0.6 + colorPhase) % 1;
-                    const midHue = (analysis.mid * 0.4 + colorPhase * 1.2) % 1;
-                    const trebleHue = (analysis.treble * 0.8 + colorPhase * 0.8) % 1;
+                    const freqIndex = Math.floor((ringIndex / this.tunnelRings.length) * audioData.length);
+                    const amplitude = audioData[freqIndex] / 255;
                     
-                    // Blend hues based on frequency dominance
-                    const dominantFreq = Math.max(analysis.bass, analysis.mid, analysis.treble);
-                    let finalHue = bassHue;
-                    if (analysis.mid === dominantFreq) finalHue = midHue;
-                    if (analysis.treble === dominantFreq) finalHue = trebleHue;
+                    // Ring rotation and scaling
+                    ring.rotation.z += (0.01 + amplitude * 0.05) * settings.rotation;
+                    const scale = (1 + amplitude * settings.intensity * 0.3) * settings.zoom;
+                    ring.scale.setScalar(scale);
                     
-                    this.pointLight.color.setHSL(finalHue, 0.9, 0.7);
+                    // Ring color and opacity
+                    const hue = (amplitude * settings.colorshift + this.time * 0.1 + ringIndex * 0.1) % 1;
+                    ring.material.color.setHSL(hue, 0.8, 0.6);
+                    ring.material.opacity = (0.3 + amplitude * 0.5) * settings.contrast;
+                });
+
+                // Update flowing particles with seamless cycling
+                this.particles.forEach((particle, particleIndex) => {
+                    const freqIndex = Math.floor((particleIndex / this.particles.length) * audioData.length);
+                    const amplitude = audioData[particleIndex % audioData.length] / 255;
                     
-                    // Adjust light distance based on intensity for better tunnel illumination
-                    this.pointLight.distance = 20 + analysis.average * 15 * settings.intensity;
-                }
+                    // Continuous particle movement
+                    particle.position.z += (particle.userData.speed + analysis.bass * 2) * settings.speed * 0.5;
+                    
+                    const segmentCount = this.performance === 'high' ? 60 : this.performance === 'medium' ? 45 : 30;
+                    const totalTunnelLength = segmentCount * 1.5;
+                    
+                    if (particle.position.z > 10) {
+                        particle.position.z -= totalTunnelLength;
+                    }
+                    
+                    // Orbital motion
+                    const time = this.time * 0.5 + particleIndex * 0.1;
+                    const angle = particle.userData.angle + time * settings.rotation;
+                    const radius = particle.userData.radius + amplitude * settings.orbsize;
+                    
+                    particle.position.x = Math.cos(angle) * radius + settings.center * 2;
+                    particle.position.y = Math.sin(angle) * radius;
+                    
+                    // Particle effects
+                    const scale = (1 + amplitude * settings.intensity * 2) * settings.zoom;
+                    particle.scale.setScalar(scale);
+                    
+                    const hue = (amplitude * settings.colorshift + this.time * 0.2 + particleIndex * 0.05) % 1;
+                    particle.material.color.setHSL(hue, 0.9, 0.7);
+                    particle.material.opacity = (0.6 + amplitude * 0.4) * settings.contrast;
+                });
+
+                // Update multiple point lights
+                const lights = [this.pointLight, this.pointLight2, this.pointLight3];
+                lights.forEach((light, lightIndex) => {
+                    if (light) {
+                        const phase = this.time * (0.8 + lightIndex * 0.3);
+                        const audioInfluence = [analysis.bass, analysis.mid, analysis.treble][lightIndex] || 0;
+                        
+                        light.position.z = 5 + Math.sin(phase) * 6 + audioInfluence * 3 * settings.orbsize;
+                        light.position.x = Math.cos(phase * 0.7) * 3 + settings.center * 3;
+                        light.position.y = Math.sin(phase * 0.5) * 2;
+                        
+                        light.intensity = (light.userData.baseIntensity + audioInfluence * 3) * settings.contrast;
+                        
+                        const hue = (audioInfluence * settings.colorshift + this.time * 0.1 + lightIndex * 0.3) % 1;
+                        light.color.setHSL(hue, 0.9, 0.7);
+                        light.distance = 15 + audioInfluence * 10;
+                    }
+                });
             }
 
             updateColors(colors) {
                 this.colors = colors;
                 
-                // Update tunnel wall colors
+                // Update tunnel walls
                 this.tunnelWalls.forEach(wall => {
                     wall.material.color.setHex(colors.primary);
                 });
                 
-                // Update ring colors
-                this.tunnelSegments.forEach(segment => {
-                    segment.children.forEach(child => {
-                        if (child.userData.type === 'ring') {
-                            child.material.color.setHex(colors.accent);
-                        }
-                    });
+                // Update tunnel rings
+                this.tunnelRings.forEach(ring => {
+                    ring.material.color.setHex(colors.accent);
                 });
                 
-                if (this.pointLight) {
-                    this.pointLight.color.setHex(colors.primary);
-                }
+                // Update particles
+                this.particles.forEach(particle => {
+                    particle.material.color.setHex(colors.accent);
+                });
+                
+                // Update lights
+                const lights = [this.pointLight, this.pointLight2, this.pointLight3];
+                lights.forEach(light => {
+                    if (light) {
+                        light.color.setHex(colors.primary);
+                    }
+                });
             }
 
             dispose() {
-                // Dispose tunnel segments and their children
-                this.tunnelSegments.forEach(segment => {
-                    segment.children.forEach(child => {
-                        child.geometry.dispose();
-                        child.material.dispose();
-                    });
-                    this.scene.remove(segment);
+                // Dispose tunnel walls
+                this.tunnelWalls.forEach(wall => {
+                    this.scene.remove(wall);
+                    wall.geometry.dispose();
+                    wall.material.dispose();
                 });
                 
-                this.tunnelSegments = [];
+                // Dispose tunnel rings
+                this.tunnelRings.forEach(ring => {
+                    this.scene.remove(ring);
+                    ring.geometry.dispose();
+                    ring.material.dispose();
+                });
+                
+                // Dispose particles
+                this.particles.forEach(particle => {
+                    this.scene.remove(particle);
+                    particle.geometry.dispose();
+                    particle.material.dispose();
+                });
+                
                 this.tunnelWalls = [];
+                this.tunnelRings = [];
+                this.particles = [];
                 this.scene.fog = null;
             }
-
         }
 
-        // Geometric Laser Pattern EDM Lightshow - Based on provided image
-        class EDMLightshowVisualizer {
+        // Cosmic Spheres - Multi-sphere particle system
+        class CosmicSpheresVisualizer {
             constructor(scene, colors, performance) {
                 this.scene = scene;
                 this.colors = colors;
                 this.performance = performance;
-                this.laserLines = [];
-                this.centerPoints = [];
+                this.spheres = [];
+                this.particleSystems = [];
+                this.connections = [];
+                this.shockwaves = [];
                 this.time = 0;
-                this.createGeometricLasers();
+                this.beatHistory = [];
+                this.createCosmicSpheres();
             }
 
-            createGeometricLasers() {
-                const beamLength = 25;
-                const beamWidth = 0.08;
+            createCosmicSpheres() {
+                // Create 5 interconnected spheres, each responding to different frequency bands
+                const sphereCount = 5;
+                const particleCount = this.performance === 'high' ? 2000 : this.performance === 'medium' ? 1500 : 1000;
+                const particlesPerSphere = Math.floor(particleCount / sphereCount);
                 
-                // Create main geometric laser pattern - 8 primary beams forming star pattern
-                const primaryAngles = [0, 45, 90, 135, 180, 225, 270, 315];
-                
-                primaryAngles.forEach((angle, index) => {
-                    const radians = (angle * Math.PI) / 180;
-                    
-                    // Create main laser beam
-                    const geometry = new THREE.PlaneGeometry(beamWidth, beamLength);
-                    const material = new THREE.MeshBasicMaterial({
-                        color: this.colors.primary,
-                        transparent: true,
-                        opacity: 0.9,
-                        side: THREE.DoubleSide,
-                        blending: THREE.AdditiveBlending
-                    });
-                    
-                    const laser = new THREE.Mesh(geometry, material);
-                    laser.position.set(
-                        Math.cos(radians) * beamLength * 0.5,
-                        Math.sin(radians) * beamLength * 0.5,
-                        0
-                    );
-                    laser.rotation.z = radians + Math.PI / 2;
-                    
-                    laser.userData = {
-                        angle: radians,
-                        baseIntensity: 0.9,
-                        pulseOffset: index * 0.5,
-                        type: 'primary'
+                for (let s = 0; s < sphereCount; s++) {
+                    const sphereData = {
+                        particles: [],
+                        center: new THREE.Vector3(),
+                        radius: 2 + s * 0.5,
+                        rotationSpeed: 0.01 + s * 0.005,
+                        frequencyBand: s, // 0=bass, 1=low-mid, 2=mid, 3=high-mid, 4=treble
+                        noiseScale: 1 + s * 0.3,
+                        turbulence: 0,
+                        dissolving: false,
+                        reforming: false,
+                        lifespan: 1.0
                     };
                     
-                    this.laserLines.push(laser);
-                    this.scene.add(laser);
+                    // Position spheres in a pattern
+                    const angle = (s / sphereCount) * Math.PI * 2;
+                    sphereData.center.set(
+                        Math.cos(angle) * 4,
+                        Math.sin(angle) * 4,
+                        Math.sin(angle * 2) * 2
+                    );
                     
-                    // Add glow effect
-                    const glowGeometry = new THREE.PlaneGeometry(beamWidth * 3, beamLength);
-                    const glowMaterial = new THREE.MeshBasicMaterial({
-                        color: this.colors.accent,
-                        transparent: true,
-                        opacity: 0.3,
-                        side: THREE.DoubleSide,
-                        blending: THREE.AdditiveBlending
-                    });
-                    
-                    const glow = new THREE.Mesh(glowGeometry, glowMaterial);
-                    glow.position.copy(laser.position);
-                    glow.rotation.copy(laser.rotation);
-                    
-                    laser.userData.glow = glow;
-                    this.scene.add(glow);
-                });
-
-                // Create secondary intersecting beams for more complex geometry
-                if (this.performance !== 'low') {
-                    const secondaryAngles = [22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5];
-                    
-                    secondaryAngles.forEach((angle, index) => {
-                        const radians = (angle * Math.PI) / 180;
-                        
-                        const geometry = new THREE.PlaneGeometry(beamWidth * 0.6, beamLength * 0.8);
+                    // Create particles for this sphere
+                    for (let p = 0; p < particlesPerSphere; p++) {
+                        const geometry = new THREE.SphereGeometry(0.02, 4, 4);
                         const material = new THREE.MeshBasicMaterial({
-                            color: this.colors.secondary,
+                            color: this.colors.primary,
                             transparent: true,
-                            opacity: 0.6,
-                            side: THREE.DoubleSide,
+                            opacity: 0.8,
                             blending: THREE.AdditiveBlending
                         });
                         
-                        const laser = new THREE.Mesh(geometry, material);
-                        laser.position.set(
-                            Math.cos(radians) * beamLength * 0.4,
-                            Math.sin(radians) * beamLength * 0.4,
-                            0.1
-                        );
-                        laser.rotation.z = radians + Math.PI / 2;
+                        const particle = new THREE.Mesh(geometry, material);
                         
-                        laser.userData = {
-                            angle: radians,
-                            baseIntensity: 0.6,
-                            pulseOffset: index * 0.3,
-                            type: 'secondary'
+                        // Random position within sphere
+                        const phi = Math.random() * Math.PI * 2;
+                        const theta = Math.random() * Math.PI;
+                        const radius = Math.random() * sphereData.radius;
+                        
+                        particle.position.set(
+                            sphereData.center.x + Math.sin(theta) * Math.cos(phi) * radius,
+                            sphereData.center.y + Math.sin(theta) * Math.sin(phi) * radius,
+                            sphereData.center.z + Math.cos(theta) * radius
+                        );
+                        
+                        particle.userData = {
+                            sphereIndex: s,
+                            particleIndex: p,
+                            basePosition: particle.position.clone(),
+                            velocity: new THREE.Vector3(
+                                (Math.random() - 0.5) * 0.02,
+                                (Math.random() - 0.5) * 0.02,
+                                (Math.random() - 0.5) * 0.02
+                            ),
+                            life: Math.random(),
+                            maxLife: 1 + Math.random() * 2,
+                            noiseOffset: new THREE.Vector3(
+                                Math.random() * 100,
+                                Math.random() * 100,
+                                Math.random() * 100
+                            )
                         };
                         
-                        this.laserLines.push(laser);
-                        this.scene.add(laser);
-                    });
+                        sphereData.particles.push(particle);
+                        this.scene.add(particle);
+                    }
+                    
+                    this.spheres.push(sphereData);
                 }
 
-                // Create center intersection points
-                for (let i = 0; i < 3; i++) {
-                    const pointGeometry = new THREE.SphereGeometry(0.1 + i * 0.05, 8, 8);
-                    const pointMaterial = new THREE.MeshBasicMaterial({
-                        color: this.colors.accent,
+                // Create connections between spheres
+                for (let i = 0; i < sphereCount; i++) {
+                    for (let j = i + 1; j < sphereCount; j++) {
+                        const geometry = new THREE.BufferGeometry();
+                        const positions = new Float32Array([
+                            this.spheres[i].center.x, this.spheres[i].center.y, this.spheres[i].center.z,
+                            this.spheres[j].center.x, this.spheres[j].center.y, this.spheres[j].center.z
+                        ]);
+                        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                        
+                        const material = new THREE.LineBasicMaterial({
+                            color: this.colors.accent,
+                            transparent: true,
+                            opacity: 0.3,
+                            blending: THREE.AdditiveBlending
+                        });
+                        
+                        const connection = new THREE.Line(geometry, material);
+                        connection.userData = {
+                            sphere1: i,
+                            sphere2: j,
+                            positions: positions,
+                            baseOpacity: 0.3
+                        };
+                        
+                        this.connections.push(connection);
+                        this.scene.add(connection);
+                    }
+                }
+
+                // Create shockwave system for beat detection
+                for (let i = 0; i < 10; i++) {
+                    const geometry = new THREE.RingGeometry(0.1, 0.2, 16);
+                    const material = new THREE.MeshBasicMaterial({
+                        color: this.colors.secondary,
                         transparent: true,
-                        opacity: 0.8,
+                        opacity: 0,
+                        side: THREE.DoubleSide,
                         blending: THREE.AdditiveBlending
                     });
                     
-                    const point = new THREE.Mesh(pointGeometry, pointMaterial);
-                    point.position.set(0, 0, i * 0.2 - 0.2);
-                    point.userData = {
-                        baseScale: 1 + i * 0.3,
-                        pulseOffset: i * Math.PI * 0.7
+                    const shockwave = new THREE.Mesh(geometry, material);
+                    shockwave.userData = {
+                        active: false,
+                        startTime: 0,
+                        duration: 2000, // ms
+                        maxRadius: 15,
+                        origin: new THREE.Vector3()
                     };
                     
-                    this.centerPoints.push(point);
-                    this.scene.add(point);
+                    this.shockwaves.push(shockwave);
+                    this.scene.add(shockwave);
                 }
 
-                // Dark background for better laser visibility
-                this.scene.fog = new THREE.Fog(0x000000, 10, 100);
+                // Cosmic background
+                this.scene.fog = new THREE.Fog(0x000011, 10, 100);
                 
-                // Minimal ambient lighting
-                const ambientLight = new THREE.AmbientLight(0x111111, 0.1);
+                // Ambient cosmic lighting
+                const ambientLight = new THREE.AmbientLight(0x221144, 0.3);
                 this.scene.add(ambientLight);
+                
+                // Dynamic point lights for each sphere
+                this.spheres.forEach((sphere, index) => {
+                    const pointLight = new THREE.PointLight(this.colors.primary, 1.0, 20);
+                    pointLight.position.copy(sphere.center);
+                    pointLight.userData = { sphereIndex: index };
+                    this.scene.add(pointLight);
+                    sphere.light = pointLight;
+                });
             }
 
             update(audioData, settings, analysis) {
@@ -2141,116 +2448,236 @@
 
                 this.time += 0.016 * settings.speed;
 
-                // Update center intersection points
-                this.centerPoints.forEach((point, index) => {
-                    const pulseIntensity = Math.sin(this.time * 2 + point.userData.pulseOffset) * 0.5 + 0.5;
-                    const audioBoost = (analysis.bass * 0.6 + analysis.mid * 0.3 + analysis.treble * 0.1);
+                // Beat detection for shockwaves
+                const isBeat = analysis.peak > 0.7 && (this.beatHistory.length === 0 ||
+                    this.time - this.beatHistory[this.beatHistory.length - 1] > 0.3);
+                
+                if (isBeat) {
+                    this.beatHistory.push(this.time);
+                    this.triggerShockwave();
+                }
+
+                // Update each cosmic sphere
+                this.spheres.forEach((sphere, sphereIndex) => {
+                    // Map sphere to frequency band
+                    const frequencyBands = [analysis.bass, analysis.bass * 0.7 + analysis.mid * 0.3,
+                                          analysis.mid, analysis.mid * 0.3 + analysis.treble * 0.7, analysis.treble];
+                    const bandIntensity = frequencyBands[sphereIndex] || 0;
                     
-                    const scale = point.userData.baseScale * (1 + audioBoost * settings.intensity * 2) * settings.zoom;
-                    point.scale.setScalar(scale);
+                    // Update sphere center position with orbital motion
+                    const angle = (sphereIndex / 5) * Math.PI * 2 + this.time * settings.rotation * 0.1;
+                    const orbitalRadius = 4 + bandIntensity * settings.orbsize * 3;
+                    sphere.center.set(
+                        Math.cos(angle) * orbitalRadius + settings.center * 6,
+                        Math.sin(angle) * orbitalRadius,
+                        Math.sin(angle * 2 + this.time * 0.3) * 2 + sphereIndex * 0.5
+                    );
                     
-                    const opacity = (0.5 + pulseIntensity * 0.5 + audioBoost) * settings.contrast;
-                    point.material.opacity = Math.min(opacity, 1.0);
+                    // Update sphere properties
+                    sphere.rotationSpeed = (0.01 + sphereIndex * 0.005) * (1 + bandIntensity * 2) * settings.speed;
+                    sphere.turbulence = bandIntensity * settings.warp * 2;
+                    sphere.radius = (2 + sphereIndex * 0.5) * (1 + bandIntensity * 0.5) * settings.zoom;
                     
-                    const hue = (audioBoost * settings.colorshift + this.time * 0.1 + index * 0.2) % 1;
-                    point.material.color.setHSL(hue, 0.9, 0.7);
+                    // Dissolving/reforming based on audio intensity
+                    if (bandIntensity > 0.8 && !sphere.dissolving) {
+                        sphere.dissolving = true;
+                        sphere.reforming = false;
+                    } else if (bandIntensity < 0.3 && sphere.dissolving) {
+                        sphere.dissolving = false;
+                        sphere.reforming = true;
+                    }
+                    
+                    // Update particles in this sphere
+                    sphere.particles.forEach((particle, particleIndex) => {
+                        const userData = particle.userData;
+                        
+                        // Noise-based movement like liquid stardust
+                        const noiseTime = this.time * settings.flow * 0.5;
+                        const noiseX = Math.sin(noiseTime + userData.noiseOffset.x) * sphere.noiseScale;
+                        const noiseY = Math.cos(noiseTime + userData.noiseOffset.y) * sphere.noiseScale;
+                        const noiseZ = Math.sin(noiseTime * 0.7 + userData.noiseOffset.z) * sphere.noiseScale;
+                        
+                        // Orbital motion around sphere center
+                        const orbitalTime = this.time * sphere.rotationSpeed;
+                        const phi = userData.particleIndex * 0.1 + orbitalTime;
+                        const theta = userData.particleIndex * 0.05 + orbitalTime * 0.7;
+                        
+                        const baseRadius = sphere.radius * (0.5 + Math.random() * 0.5);
+                        const x = sphere.center.x + Math.sin(theta) * Math.cos(phi) * baseRadius + noiseX * settings.complexity;
+                        const y = sphere.center.y + Math.sin(theta) * Math.sin(phi) * baseRadius + noiseY * settings.complexity;
+                        const z = sphere.center.z + Math.cos(theta) * baseRadius + noiseZ * settings.complexity;
+                        
+                        // Add turbulence on frequency peaks
+                        if (sphere.turbulence > 0.5) {
+                            const turbulenceForce = sphere.turbulence * settings.intensity;
+                            particle.position.x = x + (Math.random() - 0.5) * turbulenceForce;
+                            particle.position.y = y + (Math.random() - 0.5) * turbulenceForce;
+                            particle.position.z = z + (Math.random() - 0.5) * turbulenceForce;
+                        } else {
+                            particle.position.set(x, y, z);
+                        }
+                        
+                        // Particle lifecycle
+                        userData.life += 0.016 * settings.speed;
+                        if (userData.life > userData.maxLife) {
+                            userData.life = 0;
+                            userData.maxLife = 1 + Math.random() * 2;
+                        }
+                        
+                        // Dissolving/reforming effects
+                        let opacity = 0.8;
+                        if (sphere.dissolving) {
+                            opacity *= Math.max(0, 1 - userData.life / userData.maxLife);
+                        } else if (sphere.reforming) {
+                            opacity *= Math.min(1, userData.life / userData.maxLife);
+                        }
+                        
+                        // Scale based on audio and lifecycle
+                        const scale = (1 + bandIntensity * settings.intensity) * settings.radius *
+                                     (0.5 + Math.sin(userData.life * Math.PI) * 0.5);
+                        particle.scale.setScalar(scale);
+                        
+                        // Color based on frequency band and position
+                        const hue = (sphereIndex * 0.2 + bandIntensity * settings.colorshift +
+                                    userData.life * 0.1 + this.time * 0.05) % 1;
+                        particle.material.color.setHSL(hue, 0.9, 0.7 + bandIntensity * 0.3);
+                        particle.material.opacity = opacity * (0.6 + bandIntensity * 0.4) * settings.contrast;
+                    });
+                    
+                    // Update sphere lighting
+                    if (sphere.light) {
+                        sphere.light.position.copy(sphere.center);
+                        sphere.light.intensity = (1 + bandIntensity * 3) * settings.contrast;
+                        const hue = (sphereIndex * 0.2 + bandIntensity * settings.colorshift + this.time * 0.1) % 1;
+                        sphere.light.color.setHSL(hue, 0.8, 0.6);
+                    }
                 });
 
-                // Update geometric laser lines
-                this.laserLines.forEach((laser, index) => {
-                    const isPrimary = laser.userData.type === 'primary';
-                    const freqIndex = Math.floor((index / this.laserLines.length) * audioData.length);
-                    const amplitude = audioData[freqIndex] / 255;
+                // Update connections between spheres
+                this.connections.forEach(connection => {
+                    const sphere1 = this.spheres[connection.userData.sphere1];
+                    const sphere2 = this.spheres[connection.userData.sphere2];
+                    const positions = connection.userData.positions;
                     
-                    // Audio-reactive intensity
-                    const baseIntensity = laser.userData.baseIntensity;
-                    const audioIntensity = isPrimary ?
-                        (analysis.bass * 0.4 + analysis.mid * 0.4 + analysis.treble * 0.2) :
-                        (analysis.treble * 0.6 + analysis.mid * 0.4);
+                    // Update connection positions
+                    positions[0] = sphere1.center.x;
+                    positions[1] = sphere1.center.y;
+                    positions[2] = sphere1.center.z;
+                    positions[3] = sphere2.center.x;
+                    positions[4] = sphere2.center.y;
+                    positions[5] = sphere2.center.z;
                     
-                    const finalIntensity = (baseIntensity + audioIntensity * settings.intensity) * settings.contrast;
-                    laser.material.opacity = Math.min(finalIntensity, 1.0);
+                    connection.geometry.attributes.position.needsUpdate = true;
                     
-                    // Dynamic color shifting
-                    const colorPhase = this.time * settings.colorshift * 0.5 + laser.userData.pulseOffset;
-                    const hue = (amplitude * settings.colorshift + colorPhase) % 1;
-                    laser.material.color.setHSL(hue, 0.9, 0.6 + amplitude * 0.3);
+                    // Connection intensity based on both spheres
+                    const band1 = [analysis.bass, analysis.bass * 0.7 + analysis.mid * 0.3,
+                                  analysis.mid, analysis.mid * 0.3 + analysis.treble * 0.7, analysis.treble][connection.userData.sphere1];
+                    const band2 = [analysis.bass, analysis.bass * 0.7 + analysis.mid * 0.3,
+                                  analysis.mid, analysis.mid * 0.3 + analysis.treble * 0.7, analysis.treble][connection.userData.sphere2];
+                    const avgIntensity = (band1 + band2) * 0.5;
                     
-                    // Glow effect updates
-                    if (laser.userData.glow) {
-                        laser.userData.glow.material.opacity = Math.min(finalIntensity * 0.4, 0.6);
-                        laser.userData.glow.material.color.setHSL(hue, 0.8, 0.5);
-                    }
+                    connection.material.opacity = (connection.userData.baseOpacity + avgIntensity * 0.7) * settings.contrast;
                     
-                    // Geometric transformations based on audio
-                    const rotationAmount = settings.rotation * settings.speed * 0.01;
-                    const audioRotation = amplitude * settings.warp * 0.1;
-                    
-                    // Rotate around center while maintaining geometric pattern
-                    const currentAngle = laser.userData.angle + rotationAmount + audioRotation;
-                    const distance = 25 * 0.5 * (1 + amplitude * settings.orbsize * 0.3) * settings.zoom;
-                    
-                    laser.position.set(
-                        Math.cos(currentAngle) * distance + settings.center * 5,
-                        Math.sin(currentAngle) * distance,
-                        laser.position.z
-                    );
-                    laser.rotation.z = currentAngle + Math.PI / 2;
-                    
-                    // Scale based on audio for dynamic effect
-                    const scaleMultiplier = 1 + amplitude * settings.radius * 0.5;
-                    laser.scale.set(scaleMultiplier, 1 + audioIntensity * settings.flow * 0.3, 1);
-                    
-                    // Update glow position and rotation
-                    if (laser.userData.glow) {
-                        laser.userData.glow.position.copy(laser.position);
-                        laser.userData.glow.rotation.copy(laser.rotation);
-                        laser.userData.glow.scale.copy(laser.scale);
+                    const hue = (avgIntensity * settings.colorshift + this.time * 0.08) % 1;
+                    connection.material.color.setHSL(hue, 0.8, 0.6);
+                });
+
+                // Update shockwaves
+                this.shockwaves.forEach(shockwave => {
+                    if (shockwave.userData.active) {
+                        const elapsed = this.time * 1000 - shockwave.userData.startTime;
+                        const progress = elapsed / shockwave.userData.duration;
+                        
+                        if (progress >= 1) {
+                            shockwave.userData.active = false;
+                            shockwave.material.opacity = 0;
+                        } else {
+                            // Expand shockwave
+                            const radius = progress * shockwave.userData.maxRadius;
+                            shockwave.scale.setScalar(radius);
+                            
+                            // Fade out over time
+                            const opacity = (1 - progress) * 0.8 * settings.contrast;
+                            shockwave.material.opacity = opacity;
+                            
+                            // Color shift
+                            const hue = (progress * 0.5 + this.time * 0.1) % 1;
+                            shockwave.material.color.setHSL(hue, 0.9, 0.7);
+                        }
                     }
                 });
+            }
+
+            triggerShockwave() {
+                // Find inactive shockwave
+                const inactiveShockwave = this.shockwaves.find(sw => !sw.userData.active);
+                if (inactiveShockwave) {
+                    inactiveShockwave.userData.active = true;
+                    inactiveShockwave.userData.startTime = this.time * 1000;
+                    
+                    // Position at random sphere center
+                    const randomSphere = this.spheres[Math.floor(Math.random() * this.spheres.length)];
+                    inactiveShockwave.position.copy(randomSphere.center);
+                    inactiveShockwave.scale.setScalar(0.1);
+                }
             }
 
             updateColors(colors) {
                 this.colors = colors;
                 
-                this.laserLines.forEach(laser => {
-                    if (laser.userData.type === 'primary') {
-                        laser.material.color.setHex(colors.primary);
-                    } else {
-                        laser.material.color.setHex(colors.secondary);
-                    }
+                // Update sphere particles
+                this.spheres.forEach(sphere => {
+                    sphere.particles.forEach(particle => {
+                        particle.material.color.setHex(colors.primary);
+                    });
                     
-                    if (laser.userData.glow) {
-                        laser.userData.glow.material.color.setHex(colors.accent);
+                    if (sphere.light) {
+                        sphere.light.color.setHex(colors.primary);
                     }
                 });
                 
-                this.centerPoints.forEach(point => {
-                    point.material.color.setHex(colors.accent);
+                // Update connections
+                this.connections.forEach(connection => {
+                    connection.material.color.setHex(colors.accent);
+                });
+                
+                // Update shockwaves
+                this.shockwaves.forEach(shockwave => {
+                    shockwave.material.color.setHex(colors.secondary);
                 });
             }
 
             dispose() {
-                this.laserLines.forEach(laser => {
-                    this.scene.remove(laser);
-                    laser.geometry.dispose();
-                    laser.material.dispose();
+                // Dispose sphere particles
+                this.spheres.forEach(sphere => {
+                    sphere.particles.forEach(particle => {
+                        this.scene.remove(particle);
+                        particle.geometry.dispose();
+                        particle.material.dispose();
+                    });
                     
-                    if (laser.userData.glow) {
-                        this.scene.remove(laser.userData.glow);
-                        laser.userData.glow.geometry.dispose();
-                        laser.userData.glow.material.dispose();
+                    if (sphere.light) {
+                        this.scene.remove(sphere.light);
                     }
                 });
                 
-                this.centerPoints.forEach(point => {
-                    this.scene.remove(point);
-                    point.geometry.dispose();
-                    point.material.dispose();
+                // Dispose connections
+                this.connections.forEach(connection => {
+                    this.scene.remove(connection);
+                    connection.geometry.dispose();
+                    connection.material.dispose();
                 });
                 
-                this.laserLines = [];
-                this.centerPoints = [];
+                // Dispose shockwaves
+                this.shockwaves.forEach(shockwave => {
+                    this.scene.remove(shockwave);
+                    shockwave.geometry.dispose();
+                    shockwave.material.dispose();
+                });
+                
+                this.spheres = [];
+                this.connections = [];
+                this.shockwaves = [];
                 this.scene.fog = null;
             }
         }
